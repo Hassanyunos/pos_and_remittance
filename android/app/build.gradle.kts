@@ -7,8 +7,8 @@ plugins {
 android {
     namespace = "com.example.pos_and_remittance"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
-
+    ndkVersion = "28.2.13676358"  // Match your installed version
+    
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
