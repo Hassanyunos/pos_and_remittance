@@ -1,17 +1,21 @@
-# pos_and_remittance
+# POS & Remittance
 
-A new Flutter project.
+Flutter application organized by feature:
 
-## Getting Started
+```
+lib/
+  app/
+  core/database/
+  features/
+    auth/
+    home/
+    user_management/
+```
 
-This project is a starting point for a Flutter application.
+On first launch, the database seeds one administrator account:
 
-A few resources to get you started if this is your first Flutter project:
+- Email: `admin@example.com`
+- Password: `admin123`
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+There is no public registration screen. After signing in, an administrator can
+create staff or additional administrator accounts from **Create user**.
