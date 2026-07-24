@@ -36,7 +36,7 @@ class RemittanceService {
 
   Future<List<Remittance>> getRemittances() async {
     await AppDatabase.instance.database;
-    return AppDatabase.instance.remittanceRepository.getAll();
+    return AppDatabase.instance.remittanceRepository!.getAll();
   }
 
   Future<Remittance> addRemittance({
@@ -56,7 +56,7 @@ class RemittanceService {
     validateRemittanceInput(referenceNumber: referenceNumber, amount: amount, charge: charge);
 
     await AppDatabase.instance.database;
-    final fundRepository = AppDatabase.instance.fundRepository;
+    final fundRepository = AppDatabase.instance.fundRepository!;
     final fund = await fundRepository.getById(fundId);
     if (fund == null || fund.fundType != FundType.eCash) {
       throw ArgumentError('Only eCash funds can be used for remittance records.');
@@ -118,7 +118,7 @@ class RemittanceService {
     await fundRepository.update(fund.copyWith(currentBalance: updatedFundBalance));
     await fundRepository.update(remittanceCashFund.copyWith(currentBalance: updatedCashFundBalance));
 
-    return AppDatabase.instance.remittanceRepository.create(remittance);
+    return AppDatabase.instance.remittanceRepository!.create(remittance);
   }
 
   Future<Remittance> updateRemittance({
@@ -135,8 +135,8 @@ class RemittanceService {
     validateRemittanceInput(referenceNumber: referenceNumber, amount: amount, charge: charge);
 
     await AppDatabase.instance.database;
-    final fundRepository = AppDatabase.instance.fundRepository;
-    final remittanceRepository = AppDatabase.instance.remittanceRepository;
+    final fundRepository = AppDatabase.instance.fundRepository!;
+    final remittanceRepository = AppDatabase.instance.remittanceRepository!;
     final fund = await fundRepository.getById(existingRemittance.fundId);
     if (fund == null || fund.fundType != FundType.eCash) {
       throw ArgumentError('Only eCash funds can be used for remittance records.');
@@ -203,8 +203,8 @@ class RemittanceService {
 
   Future<void> deleteRemittance(int id) async {
     await AppDatabase.instance.database;
-    final remittanceRepository = AppDatabase.instance.remittanceRepository;
-    final fundRepository = AppDatabase.instance.fundRepository;
+    final remittanceRepository = AppDatabase.instance.remittanceRepository!;
+    final fundRepository = AppDatabase.instance.fundRepository!;
     final remittance = await remittanceRepository.getById(id);
 
     if (remittance == null) throw StateError('Remittance was not found.');

@@ -56,7 +56,7 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
   Future<void> _loadData() async {
     _remittancesFuture = RemittanceService.instance.getRemittances();
     _customersFuture = CustomerService.instance.getCustomers();
-    _fundsFuture = AppDatabase.instance.fundRepository.getAll();
+    _fundsFuture = AppDatabase.instance.fundRepository!.getAll();
 
     if (mounted) {
       setState(() {});
