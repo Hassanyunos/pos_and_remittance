@@ -8,6 +8,8 @@ import '../../features/auth/application/password_hasher.dart';
 import '../../features/customer_management/data/repositories/customer_repository.dart';
 import '../../features/expense_management/data/repositories/expense_repository.dart';
 import '../../features/fund_management/data/repositories/fund_repository.dart';
+import '../../features/grocery_stock_management/data/repositories/grocery_stock_category_repository.dart';
+import '../../features/grocery_stock_management/data/repositories/grocery_stock_repository.dart';
 import '../../features/remittance_management/data/repositories/remittance_repository.dart';
 import 'database_seeder.dart';
 
@@ -15,13 +17,15 @@ class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
   static const _databaseName = 'pos_remittance.db';
-  static const _databaseVersion = 8;
+  static const _databaseVersion = 9;
   Database? _database;
   UserRepository? userRepository;
   FundRepository? fundRepository;
   CustomerRepository? customerRepository;
   RemittanceRepository? remittanceRepository;
   ExpenseRepository? expenseRepository;
+  GroceryStockRepository? groceryStockRepository;
+  GroceryStockCategoryRepository? groceryStockCategoryRepository;
 
   Future<Database> get database async {
     if (_database != null) {
@@ -48,6 +52,8 @@ class AppDatabase {
     customerRepository = CustomerRepository(database);
     remittanceRepository = RemittanceRepository(database);
     expenseRepository = ExpenseRepository(database);
+    groceryStockRepository = GroceryStockRepository(database);
+    groceryStockCategoryRepository = GroceryStockCategoryRepository(database);
   }
 
   Future<void> _createTables(Database database, int version) async {
@@ -105,6 +111,27 @@ class AppDatabase {
         person_name TEXT NOT NULL,
         purpose TEXT NOT NULL,
         details TEXT,
+        notes TEXT
+      )
+    ''');
+    await database.execute('''
+      CREATE TABLE grocery_stock_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE
+      )
+    ''');
+    await database.execute('''
+      CREATE TABLE grocery_stock_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_name TEXT NOT NULL,
+        stock_number TEXT NOT NULL,
+        quantity_in_stock INTEGER NOT NULL DEFAULT 0,
+        capital_price REAL NOT NULL DEFAULT 0,
+        retail_price REAL NOT NULL DEFAULT 0,
+        minimum_alert_quantity INTEGER NOT NULL DEFAULT 0,
+        picture_path TEXT,
+        category TEXT NOT NULL DEFAULT 'General',
+        expiration_date TEXT,
         notes TEXT
       )
     ''');
@@ -181,6 +208,29 @@ class AppDatabase {
     }
     if (oldVersion < 8) {
       await database.execute('ALTER TABLE expenses ADD COLUMN fund_id INTEGER NOT NULL DEFAULT 1');
+    }
+    if (oldVersion < 9) {
+      await database.execute('''
+        CREATE TABLE IF NOT EXISTS grocery_stock_categories (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE
+        )
+      ''');
+      await database.execute('''
+        CREATE TABLE IF NOT EXISTS grocery_stock_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          item_name TEXT NOT NULL,
+          stock_number TEXT NOT NULL,
+          quantity_in_stock INTEGER NOT NULL DEFAULT 0,
+          capital_price REAL NOT NULL DEFAULT 0,
+          retail_price REAL NOT NULL DEFAULT 0,
+          minimum_alert_quantity INTEGER NOT NULL DEFAULT 0,
+          picture_path TEXT,
+          category TEXT NOT NULL DEFAULT 'General',
+          expiration_date TEXT,
+          notes TEXT
+        )
+      ''');
     }
   }
 }
