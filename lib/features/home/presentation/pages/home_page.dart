@@ -5,6 +5,7 @@ import '../../../auth/presentation/pages/login_page.dart';
 import '../../../user_management/presentation/pages/create_user_page.dart';
 import '../../../auth/presentation/pages/change_password_page.dart';
 import '../../../customer_management/presentation/pages/customer_management_page.dart';
+import '../../../expense_management/presentation/pages/expense_management_page.dart';
 import '../../../fund_management/presentation/pages/fund_management_page.dart';
 import '../../../remittance_management/presentation/pages/remittance_management_page.dart';
 
@@ -32,6 +33,9 @@ class HomePage extends StatelessWidget {
           const SizedBox(height: 12),
           FilledButton.icon(icon: const Icon(Icons.swap_horiz), label: const Text('Remittance management'),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const RemittanceManagementPage()))),
+          const SizedBox(height: 12),
+          FilledButton.icon(icon: const Icon(Icons.receipt_long), label: const Text('Expense management'),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ExpenseManagementPage()))),
           if (user.isOwner) ...[
             const SizedBox(height: 12),
             FilledButton.icon(icon: const Icon(Icons.person_add), label: const Text('Create user'),
