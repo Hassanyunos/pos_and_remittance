@@ -12,7 +12,7 @@ class FundRepository {
 
   Future<void> seedDefaultFunds() async {
     await _seedIfMissing(groceryCashName, FundType.cash);
-    await _seedIfMissing(remittanceECashName, FundType.eCash);
+    await _seedIfMissing(remittanceECashName, FundType.cash);
   }
 
   Future<void> _seedIfMissing(String name, FundType type) async {
