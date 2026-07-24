@@ -16,6 +16,8 @@ class _FundManagementPageState extends State<FundManagementPage> {
   List<Fund> _funds = const [];
   bool _isLoading = true;
   Object? _loadError;
+  double _totalFundBalance = 0;
+  double _totalGroceryCapital = 0;
 
   @override
   void initState() {
@@ -26,9 +28,13 @@ class _FundManagementPageState extends State<FundManagementPage> {
   Future<void> _reload() async {
     try {
       final updatedFunds = await FundService.instance.getFunds();
+      final totalFundBalance = await FundService.instance.getTotalFundBalance();
+      final totalGroceryCapital = await FundService.instance.getTotalGroceryCapital();
       if (!mounted) return;
       setState(() {
         _funds = updatedFunds;
+        _totalFundBalance = totalFundBalance;
+        _totalGroceryCapital = totalGroceryCapital;
         _isLoading = false;
         _loadError = null;
       });
@@ -75,6 +81,14 @@ class _FundManagementPageState extends State<FundManagementPage> {
     }
   }
 
+  Future<void> _showZakahDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => const _ZakahDialog(),
+    );
+    if (confirmed == true && mounted) await _reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!(AuthService.instance.currentUser?.isOwner ?? false)) {
@@ -87,20 +101,59 @@ class _FundManagementPageState extends State<FundManagementPage> {
         icon: const Icon(Icons.add),
         label: const Text('Add fund'),
       ),
-      body: _buildFundList(),
+      body: Stack(
+        children: [
+          _buildFundList(),
+          Positioned(
+            left: 16,
+            bottom: 16,
+            child: FloatingActionButton.extended(
+              onPressed: _showZakahDialog,
+              icon: const Icon(Icons.volunteer_activism),
+              label: const Text('Take zakah'),
+              heroTag: 'take_zakah_btn',
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildFundList() {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (_loadError != null) return Center(child: Text('Failed to load funds: $_loadError'));
-    if (_funds.isEmpty) return const Center(child: Text('No funds yet.'));
+
+    final itemCount = _funds.isEmpty ? 1 : _funds.length + 1;
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _funds.length,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 112),
+      itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
-        final fund = _funds[index];
+        if (index == 0) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Summary', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text('Total funds: ${NumberFormat.currency(symbol: '₱').format(_totalFundBalance)}'),
+                  Text('Total grocery stock capital: ${NumberFormat.currency(symbol: '₱').format(_totalGroceryCapital)}'),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (_funds.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: Text('No funds yet.')),
+          );
+        }
+
+        final fund = _funds[index - 1];
         return Card(
           child: ListTile(
             leading: Icon(fund.fundType == FundType.cash ? Icons.payments : Icons.account_balance_wallet),
@@ -109,7 +162,7 @@ class _FundManagementPageState extends State<FundManagementPage> {
             trailing: Wrap(
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text(NumberFormat.currency(symbol: '\u20B1').format(fund.currentBalance)),
+                Text(NumberFormat.currency(symbol: '₱').format(fund.currentBalance)),
                 IconButton(icon: const Icon(Icons.edit), tooltip: 'Edit', onPressed: () => _showFundForm(fund)),
                 IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Delete', onPressed: () => _deleteFund(fund)),
               ],
@@ -117,6 +170,203 @@ class _FundManagementPageState extends State<FundManagementPage> {
           ),
         );
       },
+    );
+  }
+}
+
+class _ZakahDialog extends StatefulWidget {
+  const _ZakahDialog();
+
+  @override
+  State<_ZakahDialog> createState() => _ZakahDialogState();
+}
+
+class _ZakahDialogState extends State<_ZakahDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _goldController = TextEditingController(text: '0');
+  final _silverController = TextEditingController(text: '0');
+  bool _isSaving = false;
+  bool _isCalculating = false;
+  double? _calculatedAmount;
+  String? _eligibilityMessage;
+  int? _selectedFundId;
+  List<Fund> _funds = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _goldController.addListener(_refreshCalculation);
+    _silverController.addListener(_refreshCalculation);
+    _loadFunds();
+  }
+
+  @override
+  void dispose() {
+    _goldController.removeListener(_refreshCalculation);
+    _silverController.removeListener(_refreshCalculation);
+    _goldController.dispose();
+    _silverController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFunds() async {
+    try {
+      final funds = await FundService.instance.getFunds();
+      if (!mounted) return;
+      setState(() {
+        _funds = funds;
+        if (_selectedFundId == null && funds.isNotEmpty) {
+          _selectedFundId = funds.first.id;
+        }
+      });
+      await _refreshCalculation();
+    } catch (_) {
+      if (!mounted) return;
+    }
+  }
+
+  Future<void> _refreshCalculation() async {
+    final goldPrice = double.tryParse(_goldController.text);
+    final silverPrice = double.tryParse(_silverController.text);
+
+    if (goldPrice == null || silverPrice == null) {
+      if (!mounted) return;
+      setState(() => _calculatedAmount = null);
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _isCalculating = true);
+
+    try {
+      final amount = await FundService.instance.getCurrentZakahAmount(
+        goldPricePerGram: goldPrice,
+        silverPricePerGram: silverPrice,
+      );
+      final eligibilityMessage = await FundService.instance.getCurrentZakatEligibilityMessage(
+        goldPricePerGram: goldPrice,
+        silverPricePerGram: silverPrice,
+      );
+      if (!mounted) return;
+      setState(() {
+        _calculatedAmount = amount;
+        _eligibilityMessage = eligibilityMessage.isEmpty ? null : eligibilityMessage;
+        _isCalculating = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _calculatedAmount = null;
+        _eligibilityMessage = null;
+        _isCalculating = false;
+      });
+    }
+  }
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_selectedFundId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please choose a fund first.')));
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      await FundService.instance.takeZakah(
+        goldPricePerGram: double.parse(_goldController.text),
+        silverPricePerGram: double.parse(_silverController.text),
+        fundId: _selectedFundId!,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Zakat recorded successfully.')));
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final amountText = _isCalculating
+        ? 'Calculating zakah...'
+        : _calculatedAmount == null
+            ? 'Enter valid prices to calculate the zakah amount.'
+            : 'Calculated zakah: ${NumberFormat.currency(symbol: '₱').format(_calculatedAmount)}';
+
+    final displayMessage = _eligibilityMessage ?? amountText;
+
+    return AlertDialog(
+      title: const Text('Take zakah'),
+      content: Form(
+        key: _formKey,
+        child: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Zakat is only taken once a year. The amount is based on the total funds and grocery stock capital.'),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _goldController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Gold price per gram'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) return 'Enter a valid price.';
+                  final parsed = double.tryParse(value);
+                  if (parsed == null || parsed <= 0) return 'Gold price must be greater than zero.';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _silverController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Silver price per gram'),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) return 'Enter a valid price.';
+                  final parsed = double.tryParse(value);
+                  if (parsed == null || parsed <= 0) return 'Silver price must be greater than zero.';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              Card(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(displayMessage, style: const TextStyle(fontWeight: FontWeight.w600)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (_funds.isNotEmpty)
+                DropdownButtonFormField<int>(
+                  initialValue: _selectedFundId,
+                  decoration: const InputDecoration(labelText: 'Deduct from fund'),
+                  items: [
+                    for (final fund in _funds)
+                      DropdownMenuItem<int>(
+                        value: fund.id,
+                        child: Text('${fund.name} (${fund.fundType == FundType.cash ? 'Cash' : 'eCash'})'),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => _selectedFundId = value),
+                )
+              else
+                const Text('No funds available to deduct from.'),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _isSaving ? null : () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: _isSaving || _calculatedAmount == null || _calculatedAmount! <= 0 || _eligibilityMessage != null || _selectedFundId == null ? null : _submit,
+          child: _isSaving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Take zakah'),
+        ),
+      ],
     );
   }
 }
