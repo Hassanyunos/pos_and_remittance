@@ -7,12 +7,12 @@ class CustomerService {
 
   Future<List<Customer>> getCustomers() async {
     await AppDatabase.instance.database;
-    return AppDatabase.instance.customerRepository.getAll();
+    return AppDatabase.instance.customerRepository!.getAll();
   }
 
   Future<Customer?> getCustomer(int id) async {
     await AppDatabase.instance.database;
-    return AppDatabase.instance.customerRepository.getById(id);
+    return AppDatabase.instance.customerRepository!.getById(id);
   }
 
   Future<Customer> createCustomer({
@@ -23,7 +23,7 @@ class CustomerService {
   }) async {
     if (name.trim().isEmpty) throw ArgumentError('Customer name is required.');
 
-    final repository = AppDatabase.instance.customerRepository;
+    final repository = AppDatabase.instance.customerRepository!;
     final customer = Customer(
       name: name.trim(),
       address: address?.trim().isEmpty == true ? null : address?.trim(),
@@ -42,7 +42,7 @@ class CustomerService {
   }) async {
     if (name.trim().isEmpty) throw ArgumentError('Customer name is required.');
 
-    final repository = AppDatabase.instance.customerRepository;
+    final repository = AppDatabase.instance.customerRepository!;
     final customer = Customer(
       id: id,
       name: name.trim(),
@@ -55,6 +55,6 @@ class CustomerService {
 
   Future<void> deleteCustomer(int id) async {
     await AppDatabase.instance.database;
-    await AppDatabase.instance.customerRepository.delete(id);
+    await AppDatabase.instance.customerRepository!.delete(id);
   }
 }
