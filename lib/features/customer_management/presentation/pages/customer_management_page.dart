@@ -42,22 +42,16 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     }
   }
 
-  Future<void> _saveCustomer({BuildContext? dialogContext}) async {
+  Future<void> _saveCustomer() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _isSaving = true);
 
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-    final navigator = dialogContext == null ? null : Navigator.of(dialogContext);
     final repository = _repository ?? await _ensureRepository();
     final customer = Customer(
       id: _editingCustomer?.id,
       name: _nameController.text.trim(),
-      address: _addressController.text.trim().isEmpty
-          ? null
-          : _addressController.text.trim(),
-      contactNumber: _contactController.text.trim().isEmpty
-          ? null
-          : _contactController.text.trim(),
+      address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+      contactNumber: _contactController.text.trim().isEmpty ? null : _contactController.text.trim(),
       idPicturePath: _selectedImagePath,
     );
 
@@ -70,15 +64,9 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     if (!mounted) return;
     _resetForm();
     await _refreshCustomers();
-    if (navigator != null && navigator.canPop()) {
-      navigator.pop();
-    }
     if (!mounted) return;
-    scaffoldMessenger.showSnackBar(
-      SnackBar(
-          content: Text(_editingCustomer == null
-              ? 'Customer created.'
-              : 'Customer updated.')),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_editingCustomer == null ? 'Customer created.' : 'Customer updated.')),
     );
     if (mounted) {
       setState(() => _isSaving = false);
@@ -121,12 +109,8 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
         title: const Text('Delete customer'),
         content: Text('Delete ${customer.name}?'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
         ],
       ),
     );
@@ -136,15 +120,13 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     await repository.delete(customer.id!);
     await _refreshCustomers();
     if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Customer deleted.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Customer deleted.')));
     }
   }
 
   Future<void> _pickImage({required bool fromCamera}) async {
     final source = fromCamera ? ImageSource.camera : ImageSource.gallery;
-    final pickedFile =
-        await _picker.pickImage(source: source, imageQuality: 90);
+    final pickedFile = await _picker.pickImage(source: source, imageQuality: 90);
     if (pickedFile == null) return;
     setState(() {
       _selectedImageFile = File(pickedFile.path);
@@ -153,10 +135,10 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
   }
 
   Future<void> _showCustomerDialog({Customer? customer}) async {
-    if (customer == null) {
-      _resetForm();
-    } else {
+    if (customer != null) {
       await _startEditing(customer);
+    } else {
+      _resetForm();
     }
 
     if (!mounted) return;
@@ -165,7 +147,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(customer == null ? 'Create customer' : 'Edit customer'),
+          title: Text(customer == null ? 'Add customer' : 'Edit customer'),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: SingleChildScrollView(
@@ -175,20 +157,10 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                        customer == null
-                            ? 'Add a new customer'
-                            : 'Update the customer details',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _nameController,
-                      decoration:
-                          const InputDecoration(labelText: 'Customer name'),
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                              ? 'Enter a customer name.'
-                              : null,
+                      decoration: const InputDecoration(labelText: 'Customer name'),
+                      validator: (value) => value == null || value.trim().isEmpty ? 'Enter a customer name.' : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -198,8 +170,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _contactController,
-                      decoration:
-                          const InputDecoration(labelText: 'Contact number'),
+                      decoration: const InputDecoration(labelText: 'Contact number'),
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -225,8 +196,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                       const SizedBox(height: 12),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.file(_selectedImageFile!,
-                            height: 160, fit: BoxFit.cover),
+                        child: Image.file(_selectedImageFile!, height: 160, fit: BoxFit.cover),
                       ),
                     ],
                   ],
@@ -235,25 +205,22 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                _resetForm();
-              },
-              child: const Text('Cancel'),
-            ),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
             FilledButton.icon(
-              onPressed: _isSaving
-                  ? null
-                  : () => _saveCustomer(dialogContext: dialogContext),
+              onPressed: _isSaving ? null : () => _saveCustomerFromDialog(dialogContext),
               icon: const Icon(Icons.save),
-              label: Text(
-                  customer == null ? 'Create customer' : 'Update customer'),
+              label: Text(customer == null ? 'Create customer' : 'Update customer'),
             ),
           ],
         );
       },
     );
+  }
+
+  Future<void> _saveCustomerFromDialog(BuildContext dialogContext) async {
+    await _saveCustomer();
+    if (!mounted || !dialogContext.mounted) return;
+    Navigator.pop(dialogContext);
   }
 
   void _showCustomerDetails(Customer customer) {
@@ -269,21 +236,15 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
           children: [
             Row(
               children: [
-                Expanded(
-                    child: Text(customer.name,
-                        style: Theme.of(context).textTheme.titleLarge)),
-                IconButton(
-                    onPressed: () => Navigator.pop(sheetContext),
-                    icon: const Icon(Icons.close)),
+                Expanded(child: Text(customer.name, style: Theme.of(context).textTheme.titleLarge)),
+                IconButton(onPressed: () => Navigator.pop(sheetContext), icon: const Icon(Icons.close)),
               ],
             ),
             const SizedBox(height: 16),
-            if (customer.idPicturePath != null &&
-                customer.idPicturePath!.isNotEmpty)
+            if (customer.idPicturePath != null && customer.idPicturePath!.isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.file(File(customer.idPicturePath!),
-                    fit: BoxFit.cover),
+                child: Image.file(File(customer.idPicturePath!), fit: BoxFit.cover),
               )
             else
               const Text('No image attached.'),
@@ -294,10 +255,8 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
               Text(customer.address!),
               const SizedBox(height: 12),
             ],
-            if (customer.contactNumber != null &&
-                customer.contactNumber!.isNotEmpty) ...[
-              Text('Contact number',
-                  style: Theme.of(context).textTheme.titleMedium),
+            if (customer.contactNumber != null && customer.contactNumber!.isNotEmpty) ...[
+              Text('Contact number', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 4),
               Text(customer.contactNumber!),
               const SizedBox(height: 12),
@@ -307,9 +266,9 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
               children: [
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: () async {
+                    onPressed: () {
                       Navigator.pop(sheetContext);
-                      await _showCustomerDialog(customer: customer);
+                      _showCustomerDialog(customer: customer);
                     },
                     icon: const Icon(Icons.edit),
                     label: const Text('Edit'),
@@ -337,15 +296,11 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Customer management'),
-        actions: [
-          IconButton(
-            tooltip: 'Create customer',
-            onPressed: () => _showCustomerDialog(),
-            icon: const Icon(Icons.person_add),
-          ),
-        ],
+      appBar: AppBar(title: const Text('Customer management')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showCustomerDialog(),
+        icon: const Icon(Icons.person_add),
+        label: const Text('Add customer'),
       ),
       body: SafeArea(
         child: FutureBuilder<List<Customer>>(
@@ -355,49 +310,40 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
               return const Center(child: CircularProgressIndicator());
             }
             final customers = snapshot.data!;
-            return ListView(
+            if (customers.isEmpty) {
+              return const Center(child: Text('No customers yet.'));
+            }
+            return ListView.separated(
               padding: const EdgeInsets.all(16),
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                        child: Text('Customers',
-                            style: Theme.of(context).textTheme.titleLarge)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (customers.isEmpty)
-                  const Text(
-                      'No customers yet. Create one from the button above.')
-                else
-                  ...customers.map(
-                    (customer) => Card(
-                      child: ListTile(
-                        title: Text(customer.name),
-                        subtitle: Text(
-                          [customer.address, customer.contactNumber]
-                              .where(
-                                  (value) => value != null && value.isNotEmpty)
-                              .cast<String>()
-                              .join(' • '),
+              itemCount: customers.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final customer = customers[index];
+                return Card(
+                  child: ListTile(
+                    title: Text(customer.name),
+                    subtitle: Text(
+                      [customer.address, customer.contactNumber]
+                          .where((value) => value != null && value.isNotEmpty)
+                          .cast<String>()
+                          .join(' • '),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.visibility),
+                          onPressed: () => _showCustomerDetails(customer),
                         ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.visibility),
-                              onPressed: () => _showCustomerDetails(customer),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () => _deleteCustomer(customer),
-                            ),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () => _deleteCustomer(customer),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-              ],
+                );
+              },
             );
           },
         ),
