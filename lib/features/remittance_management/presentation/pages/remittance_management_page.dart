@@ -68,139 +68,143 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Add remittance record'),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: SingleChildScrollView(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    DropdownButtonFormField<int>(
-                      initialValue: _selectedFundId,
-                      decoration: const InputDecoration(labelText: 'eCash fund'),
-                      items: funds
-                          .map((fund) => DropdownMenuItem<int>(
-                                value: fund.id,
-                                child: Text('${fund.name} (${fund.currentBalance.toStringAsFixed(2)})'),
-                              ))
-                          .toList(),
-                      onChanged: (value) => setState(() => _selectedFundId = value),
-                      validator: (value) => value == null ? 'Select an eCash fund.' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<RemittanceType>(
-                      initialValue: _selectedType,
-                      decoration: const InputDecoration(labelText: 'Type'),
-                      items: const [
-                        DropdownMenuItem(value: RemittanceType.cashIn, child: Text('Cash In')),
-                        DropdownMenuItem(value: RemittanceType.cashOut, child: Text('Cash Out')),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedType = value ?? RemittanceType.cashIn;
-                          _selectedStatus = RemittanceService.instance.getInitialStatusForType(_selectedType);
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<RemittanceStatus>(
-                      initialValue: _selectedStatus,
-                      decoration: const InputDecoration(labelText: 'Status'),
-                      items: _selectedType == RemittanceType.cashIn
-                          ? const [
-                              DropdownMenuItem(value: RemittanceStatus.receivedByCustomer, child: Text('Received by customer')),
-                            ]
-                          : const [
-                              DropdownMenuItem(value: RemittanceStatus.pending, child: Text('Not received')),
-                              DropdownMenuItem(value: RemittanceStatus.receivedByCustomer, child: Text('Received by customer')),
-                            ],
-                      onChanged: (value) => setState(() => _selectedStatus = value ?? RemittanceStatus.pending),
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _referenceController,
-                      decoration: const InputDecoration(labelText: 'Reference number'),
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Enter a reference number.' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _amountController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Amount'),
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Enter amount.' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _chargeController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Charge'),
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Enter charge.' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<int>(
-                      initialValue: _selectedCustomerId,
-                      decoration: const InputDecoration(labelText: 'Existing customer (optional)'),
-                      items: [
-                        const DropdownMenuItem<int>(value: null, child: Text('None')),
-                        ...customers.map((customer) => DropdownMenuItem<int>(
-                              value: customer.id,
-                              child: Text(customer.name),
-                            )),
-                      ],
-                      onChanged: (value) => setState(() => _selectedCustomerId = value),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text('Picture ID (optional)'),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _notesController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(labelText: 'Notes'),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Add remittance record'),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _pickImage(fromCamera: true),
-                            icon: const Icon(Icons.camera_alt),
-                            label: const Text('Take photo'),
-                          ),
+                        DropdownButtonFormField<int>(
+                          initialValue: _selectedFundId,
+                          decoration: const InputDecoration(labelText: 'eCash fund'),
+                          items: funds
+                              .map((fund) => DropdownMenuItem<int>(
+                                    value: fund.id,
+                                    child: Text('${fund.name} (${fund.currentBalance.toStringAsFixed(2)})'),
+                                  ))
+                              .toList(),
+                          onChanged: (value) => setDialogState(() => _selectedFundId = value),
+                          validator: (value) => value == null ? 'Select an eCash fund.' : null,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _pickImage(fromCamera: false),
-                            icon: const Icon(Icons.photo_library),
-                            label: const Text('Choose photo'),
-                          ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<RemittanceType>(
+                          initialValue: _selectedType,
+                          decoration: const InputDecoration(labelText: 'Type'),
+                          items: const [
+                            DropdownMenuItem(value: RemittanceType.cashIn, child: Text('Cash In')),
+                            DropdownMenuItem(value: RemittanceType.cashOut, child: Text('Cash Out')),
+                          ],
+                          onChanged: (value) {
+                            setDialogState(() {
+                              _selectedType = value ?? RemittanceType.cashIn;
+                              _selectedStatus = RemittanceService.instance.getInitialStatusForType(_selectedType);
+                            });
+                          },
                         ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<RemittanceStatus>(
+                          initialValue: _selectedStatus,
+                          decoration: const InputDecoration(labelText: 'Status'),
+                          items: _selectedType == RemittanceType.cashIn
+                              ? const [
+                                  DropdownMenuItem(value: RemittanceStatus.receivedByCustomer, child: Text('Received by customer')),
+                                ]
+                              : const [
+                                  DropdownMenuItem(value: RemittanceStatus.pending, child: Text('Not received')),
+                                  DropdownMenuItem(value: RemittanceStatus.receivedByCustomer, child: Text('Received by customer')),
+                                ],
+                          onChanged: (value) => setDialogState(() => _selectedStatus = value ?? RemittanceStatus.pending),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _referenceController,
+                          decoration: const InputDecoration(labelText: 'Reference number'),
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Enter a reference number.' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _amountController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Amount'),
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Enter amount.' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _chargeController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Charge'),
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Enter charge.' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<int>(
+                          initialValue: _selectedCustomerId,
+                          decoration: const InputDecoration(labelText: 'Existing customer (optional)'),
+                          items: [
+                            const DropdownMenuItem<int>(value: null, child: Text('None')),
+                            ...customers.map((customer) => DropdownMenuItem<int>(
+                                  value: customer.id,
+                                  child: Text(customer.name),
+                                )),
+                          ],
+                          onChanged: (value) => setDialogState(() => _selectedCustomerId = value),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text('Picture ID (optional)'),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _notesController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(labelText: 'Notes'),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _pickImage(fromCamera: true, setDialogState: setDialogState),
+                                icon: const Icon(Icons.camera_alt),
+                                label: const Text('Take photo'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _pickImage(fromCamera: false, setDialogState: setDialogState),
+                                icon: const Icon(Icons.photo_library),
+                                label: const Text('Choose photo'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_selectedImageFile != null) ...[
+                          const SizedBox(height: 12),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(_selectedImageFile!, height: 160, fit: BoxFit.cover),
+                          ),
+                        ],
                       ],
                     ),
-                    if (_selectedImageFile != null) ...[
-                      const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.file(_selectedImageFile!, height: 160, fit: BoxFit.cover),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-            FilledButton.icon(
-              onPressed: _isSaving ? null : () => _saveRemittance(dialogContext: dialogContext),
-              icon: const Icon(Icons.save),
-              label: const Text('Record remittance'),
-            ),
-          ],
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                FilledButton.icon(
+                  onPressed: _isSaving ? null : () => _saveRemittance(dialogContext: dialogContext),
+                  icon: const Icon(Icons.save),
+                  label: const Text('Record remittance'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -260,24 +264,38 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
     setState(() {});
   }
 
-  Future<void> _pickImage({required bool fromCamera}) async {
+  Future<void> _pickImage({required bool fromCamera, void Function(void Function())? setDialogState}) async {
     final source = fromCamera ? ImageSource.camera : ImageSource.gallery;
     final pickedFile = await _picker.pickImage(source: source, imageQuality: 90);
     if (pickedFile == null) return;
-    setState(() {
-      _selectedImageFile = File(pickedFile.path);
-      _selectedImagePath = pickedFile.path;
-    });
+    if (setDialogState != null) {
+      setDialogState(() {
+        _selectedImageFile = File(pickedFile.path);
+        _selectedImagePath = pickedFile.path;
+      });
+    } else {
+      setState(() {
+        _selectedImageFile = File(pickedFile.path);
+        _selectedImagePath = pickedFile.path;
+      });
+    }
   }
 
-  Future<void> _pickEditImage({required bool fromCamera}) async {
+  Future<void> _pickEditImage({required bool fromCamera, void Function(void Function())? setDialogState}) async {
     final source = fromCamera ? ImageSource.camera : ImageSource.gallery;
     final pickedFile = await _picker.pickImage(source: source, imageQuality: 90);
     if (pickedFile == null) return;
-    setState(() {
-      _editSelectedImageFile = File(pickedFile.path);
-      _editSelectedImagePath = pickedFile.path;
-    });
+    if (setDialogState != null) {
+      setDialogState(() {
+        _editSelectedImageFile = File(pickedFile.path);
+        _editSelectedImagePath = pickedFile.path;
+      });
+    } else {
+      setState(() {
+        _editSelectedImageFile = File(pickedFile.path);
+        _editSelectedImagePath = pickedFile.path;
+      });
+    }
   }
 
   Future<void> _showRemittanceDetailsDialog({required Remittance remittance, required Fund? fund, required Customer? customer}) async {
@@ -296,134 +314,143 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
     _isEditing = false;
     setState(() {});
 
+    final dialogContextReference = context;
     final customers = await CustomerService.instance.getCustomers();
+    if (!mounted || !dialogContextReference.mounted) return;
 
     await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(remittance.referenceNumber),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _detailRow('Type', remittance.remittanceType.name == 'cashIn' ? 'Cash In' : 'Cash Out'),
-                _detailRow('Amount', remittance.amount.toStringAsFixed(2)),
-                _detailRow('Charge', remittance.charge.toStringAsFixed(2)),
-                _detailRow('Status', RemittanceService.instance.getStatusLabel(remittance.remittanceStatus, remittanceType: remittance.remittanceType)),
-                _detailRow('Fund', fund?.name ?? 'Unknown'),
-                _detailRow('Customer', customer?.name ?? 'None'),
-                _detailRow('Reference', remittance.referenceNumber),
-                if (remittance.notes != null && remittance.notes!.isNotEmpty) _detailRow('Notes', remittance.notes!),
-                if (remittance.processedAt != null) _detailRow('Processed at', remittance.processedAt!.toString()),
-                if (remittance.customerIdPicturePath != null && remittance.customerIdPicturePath!.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Text('Picture ID'),
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.file(File(remittance.customerIdPicturePath!), fit: BoxFit.cover),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                if (_isEditing) ...[
-                  const Text('Edit details', style: TextStyle(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<RemittanceType>(
-                    initialValue: _editSelectedType,
-                    decoration: const InputDecoration(labelText: 'Type'),
-                    items: const [
-                      DropdownMenuItem(value: RemittanceType.cashIn, child: Text('Cash In')),
-                      DropdownMenuItem(value: RemittanceType.cashOut, child: Text('Cash Out')),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        _editSelectedType = value ?? RemittanceType.cashIn;
-                        _editSelectedStatus = RemittanceService.instance.getInitialStatusForType(_editSelectedType);
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<RemittanceStatus>(
-                    initialValue: _editSelectedStatus,
-                    decoration: const InputDecoration(labelText: 'Status'),
-                    items: _editSelectedType == RemittanceType.cashIn
-                        ? const [
-                            DropdownMenuItem(value: RemittanceStatus.receivedByCustomer, child: Text('Received by customer')),
-                          ]
-                        : const [
-                            DropdownMenuItem(value: RemittanceStatus.pending, child: Text('Not received')),
-                            DropdownMenuItem(value: RemittanceStatus.receivedByCustomer, child: Text('Received by customer')),
-                          ],
-                    onChanged: (value) => setState(() => _editSelectedStatus = value ?? RemittanceStatus.pending),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(controller: _editReferenceController, decoration: const InputDecoration(labelText: 'Reference number')),
-                  const SizedBox(height: 12),
-                  TextFormField(controller: _editAmountController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount')),
-                  const SizedBox(height: 12),
-                  TextFormField(controller: _editChargeController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Charge')),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<int>(
-                    initialValue: _editSelectedCustomerId,
-                    decoration: const InputDecoration(labelText: 'Customer (optional)'),
-                    items: [
-                      const DropdownMenuItem<int>(value: null, child: Text('None')),
-                      ...customers.map((customer) => DropdownMenuItem<int>(
-                            value: customer.id,
-                            child: Text(customer.name),
-                          )),
-                    ],
-                    onChanged: (value) => setState(() => _editSelectedCustomerId = value),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(controller: _editNotesController, maxLines: 3, decoration: const InputDecoration(labelText: 'Notes')),
-                  const SizedBox(height: 12),
-                  Row(
+      context: dialogContextReference,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(remittance.referenceNumber),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _pickEditImage(fromCamera: true),
-                          icon: const Icon(Icons.camera_alt),
-                          label: const Text('Take photo'),
+                      if (_isEditing) ...[
+
+                        const Text('Edit details', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<RemittanceType>(
+                          initialValue: _editSelectedType,
+                          decoration: const InputDecoration(labelText: 'Type'),
+                          items: const [
+                            DropdownMenuItem(value: RemittanceType.cashIn, child: Text('Cash In')),
+                            DropdownMenuItem(value: RemittanceType.cashOut, child: Text('Cash Out')),
+                          ],
+                          onChanged: (value) {
+                            setDialogState(() {
+                              _editSelectedType = value ?? RemittanceType.cashIn;
+                              _editSelectedStatus = RemittanceService.instance.getInitialStatusForType(_editSelectedType);
+                            });
+                          },
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _pickEditImage(fromCamera: false),
-                          icon: const Icon(Icons.photo_library),
-                          label: const Text('Choose photo'),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<RemittanceStatus>(
+                          initialValue: _editSelectedStatus,
+                          decoration: const InputDecoration(labelText: 'Status'),
+                          items: _editSelectedType == RemittanceType.cashIn
+                              ? const [
+                                  DropdownMenuItem(value: RemittanceStatus.receivedByCustomer, child: Text('Received by customer')),
+                                ]
+                              : const [
+                                  DropdownMenuItem(value: RemittanceStatus.pending, child: Text('Not received')),
+                                  DropdownMenuItem(value: RemittanceStatus.receivedByCustomer, child: Text('Received by customer')),
+                                ],
+                          onChanged: (value) => setDialogState(() => _editSelectedStatus = value ?? RemittanceStatus.pending),
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                        TextFormField(controller: _editReferenceController, decoration: const InputDecoration(labelText: 'Reference number')),
+                        const SizedBox(height: 12),
+                        TextFormField(controller: _editAmountController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount')),
+                        const SizedBox(height: 12),
+                        TextFormField(controller: _editChargeController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Charge')),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<int>(
+                          initialValue: _editSelectedCustomerId,
+                          decoration: const InputDecoration(labelText: 'Customer (optional)'),
+                          items: [
+                            const DropdownMenuItem<int>(value: null, child: Text('None')),
+                            ...customers.map((customer) => DropdownMenuItem<int>(
+                                  value: customer.id,
+                                  child: Text(customer.name),
+                                )),
+                          ],
+                          onChanged: (value) => setDialogState(() => _editSelectedCustomerId = value),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(controller: _editNotesController, maxLines: 3, decoration: const InputDecoration(labelText: 'Notes')),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _pickEditImage(fromCamera: true, setDialogState: setDialogState),
+                                icon: const Icon(Icons.camera_alt),
+                                label: const Text('Take photo'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _pickEditImage(fromCamera: false, setDialogState: setDialogState),
+                                icon: const Icon(Icons.photo_library),
+                                label: const Text('Choose photo'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_editSelectedImageFile != null) ...[
+                          const SizedBox(height: 12),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(_editSelectedImageFile!, height: 160, fit: BoxFit.cover),
+                          ),
+                        ],
+                      ] else ...[
+                        _detailRow('Type', remittance.remittanceType.name == 'cashIn' ? 'Cash In' : 'Cash Out'),
+                        _detailRow('Amount', remittance.amount.toStringAsFixed(2)),
+                        _detailRow('Charge', remittance.charge.toStringAsFixed(2)),
+                        _detailRow('Status', RemittanceService.instance.getStatusLabel(remittance.remittanceStatus, remittanceType: remittance.remittanceType)),
+                        _detailRow('Fund', fund?.name ?? 'Unknown'),
+                        _detailRow('Customer', customer?.name ?? 'None'),
+                        _detailRow('Reference', remittance.referenceNumber),
+                        if (remittance.notes != null && remittance.notes!.isNotEmpty) _detailRow('Notes', remittance.notes!),
+                        if (remittance.processedAt != null) _detailRow('Processed at', remittance.processedAt!.toString()),
+                        if (remittance.customerIdPicturePath != null && remittance.customerIdPicturePath!.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          const Text('Picture ID'),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(File(remittance.customerIdPicturePath!), fit: BoxFit.cover),
+                          ),
+                        ],
+                      ],
                     ],
                   ),
-                  if (_editSelectedImageFile != null) ...[
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.file(_editSelectedImageFile!, height: 160, fit: BoxFit.cover),
-                    ),
-                  ],
-                ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
+                if (!_isEditing)
+                  TextButton(onPressed: () => setDialogState(() => _isEditing = true), child: const Text('Edit')),
+                if (_isEditing)
+                  FilledButton.icon(
+                    onPressed: () => _saveEditedRemittance(dialogContext: dialogContext, remittance: remittance),
+                    icon: const Icon(Icons.save),
+                    label: const Text('Save'),
+                  ),
               ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
-          if (! _isEditing)
-            TextButton(onPressed: () => setState(() => _isEditing = true), child: const Text('Edit')),
-          if (_isEditing)
-            FilledButton.icon(
-              onPressed: () => _saveEditedRemittance(dialogContext: dialogContext, remittance: remittance),
-              icon: const Icon(Icons.save),
-              label: const Text('Save'),
-            ),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
