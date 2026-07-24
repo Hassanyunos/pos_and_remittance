@@ -11,7 +11,7 @@ class FundService {
   Future<List<Fund>> getFunds() async {
     _requireOwner();
     await AppDatabase.instance.database;
-    return AppDatabase.instance.fundRepository.getAll();
+    return AppDatabase.instance.fundRepository!.getAll();
   }
 
   Future<void> addFund({
@@ -22,7 +22,7 @@ class FundService {
     _requireOwner();
     if (name.trim().isEmpty) throw ArgumentError('Fund name is required.');
     await AppDatabase.instance.database;
-    await AppDatabase.instance.fundRepository.create(Fund(
+    await AppDatabase.instance.fundRepository!.create(Fund(
       name: name.trim(),
       currentBalance: currentBalance,
       fundType: fundType,
@@ -38,9 +38,9 @@ class FundService {
     _requireOwner();
     if (name.trim().isEmpty) throw ArgumentError('Fund name is required.');
     await AppDatabase.instance.database;
-    final fund = await AppDatabase.instance.fundRepository.getById(id);
+    final fund = await AppDatabase.instance.fundRepository!.getById(id);
     if (fund == null) throw StateError('Fund was not found.');
-    await AppDatabase.instance.fundRepository.update(fund.copyWith(
+    await AppDatabase.instance.fundRepository!.update(fund.copyWith(
       name: name.trim(),
       currentBalance: currentBalance,
       fundType: fundType,
@@ -50,12 +50,12 @@ class FundService {
   Future<void> deleteFund(int id) async {
     _requireOwner();
     await AppDatabase.instance.database;
-    final fund = await AppDatabase.instance.fundRepository.getById(id);
+    final fund = await AppDatabase.instance.fundRepository!.getById(id);
     if (fund == null) throw StateError('Fund was not found.');
     if (_isProtected(fund)) {
       throw StateError('GroceryCash and Remittance-eCash cannot be deleted.');
     }
-    await AppDatabase.instance.fundRepository.delete(id);
+    await AppDatabase.instance.fundRepository!.delete(id);
   }
 
   // The database seeds these two funds first, so their IDs are stable and they
