@@ -6,6 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../../features/auth/data/repositories/user_repository.dart';
 import '../../features/auth/application/password_hasher.dart';
 import '../../features/customer_management/data/repositories/customer_repository.dart';
+import '../../features/expense_management/data/repositories/expense_repository.dart';
 import '../../features/fund_management/data/repositories/fund_repository.dart';
 import '../../features/remittance_management/data/repositories/remittance_repository.dart';
 import 'database_seeder.dart';
@@ -14,15 +15,19 @@ class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
   static const _databaseName = 'pos_remittance.db';
-  static const _databaseVersion = 6;
+  static const _databaseVersion = 8;
   Database? _database;
-  late final UserRepository userRepository;
-  late final FundRepository fundRepository;
-  late final CustomerRepository customerRepository;
-  late final RemittanceRepository remittanceRepository;
+  UserRepository? userRepository;
+  FundRepository? fundRepository;
+  CustomerRepository? customerRepository;
+  RemittanceRepository? remittanceRepository;
+  ExpenseRepository? expenseRepository;
 
   Future<Database> get database async {
-    if (_database != null) return _database!;
+    if (_database != null) {
+      _initializeRepositories(_database!);
+      return _database!;
+    }
     final databasePath = kIsWeb
         ? _databaseName
         : path.join(
@@ -31,13 +36,18 @@ class AppDatabase {
           );
     _database = await openDatabase(databasePath, version: _databaseVersion,
         onCreate: _createTables, onUpgrade: _upgradeDatabase);
-    userRepository = UserRepository(_database!);
-    fundRepository = FundRepository(_database!);
-    customerRepository = CustomerRepository(_database!);
-    remittanceRepository = RemittanceRepository(_database!);
-    await DatabaseSeeder(userRepository).seedOwnerUser();
-    await fundRepository.seedDefaultFunds();
+    _initializeRepositories(_database!);
+    await DatabaseSeeder(userRepository!).seedOwnerUser();
+    await fundRepository!.seedDefaultFunds();
     return _database!;
+  }
+
+  void _initializeRepositories(Database database) {
+    userRepository = UserRepository(database);
+    fundRepository = FundRepository(database);
+    customerRepository = CustomerRepository(database);
+    remittanceRepository = RemittanceRepository(database);
+    expenseRepository = ExpenseRepository(database);
   }
 
   Future<void> _createTables(Database database, int version) async {
@@ -83,6 +93,18 @@ class AppDatabase {
         processed_by TEXT,
         edited_by TEXT,
         remittance_status TEXT NOT NULL,
+        notes TEXT
+      )
+    ''');
+    await database.execute('''
+      CREATE TABLE expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fund_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        expense_date TEXT NOT NULL,
+        person_name TEXT NOT NULL,
+        purpose TEXT NOT NULL,
+        details TEXT,
         notes TEXT
       )
     ''');
@@ -142,6 +164,23 @@ class AppDatabase {
           notes TEXT
         )
       ''');
+    }
+    if (oldVersion < 7) {
+      await database.execute('''
+        CREATE TABLE IF NOT EXISTS expenses (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          fund_id INTEGER NOT NULL,
+          amount REAL NOT NULL,
+          expense_date TEXT NOT NULL,
+          person_name TEXT NOT NULL,
+          purpose TEXT NOT NULL,
+          details TEXT,
+          notes TEXT
+        )
+      ''');
+    }
+    if (oldVersion < 8) {
+      await database.execute('ALTER TABLE expenses ADD COLUMN fund_id INTEGER NOT NULL DEFAULT 1');
     }
   }
 }
