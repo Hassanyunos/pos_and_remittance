@@ -11,7 +11,7 @@ class AuthService {
 
   Future<bool> signIn({required String email, required String password}) async {
     await AppDatabase.instance.database;
-    final user = await AppDatabase.instance.userRepository.getByEmail(email);
+    final user = await AppDatabase.instance.userRepository!.getByEmail(email);
     if (user == null || user.passwordHash != PasswordHasher.hash(password)) return false;
     _currentUser = user;
     return true;
@@ -30,7 +30,7 @@ class AuthService {
       return UserCreationResult.notAuthorized;
     }
     await AppDatabase.instance.database;
-    final userRepository = AppDatabase.instance.userRepository;
+    final userRepository = AppDatabase.instance.userRepository!;
     if (await userRepository.getByEmail(email) != null) {
       return UserCreationResult.emailAlreadyInUse;
     }
@@ -55,7 +55,7 @@ class AuthService {
     }
     await AppDatabase.instance.database;
     final passwordHash = PasswordHasher.hash(newPassword);
-    await AppDatabase.instance.userRepository.updatePassword(
+    await AppDatabase.instance.userRepository!.updatePassword(
       userId: currentUser.id!,
       passwordHash: passwordHash,
     );
