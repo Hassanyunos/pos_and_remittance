@@ -31,6 +31,7 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
   final _editAmountController = TextEditingController();
   final _editChargeController = TextEditingController();
   final _editNotesController = TextEditingController();
+  final _searchController = TextEditingController();
   final _picker = ImagePicker();
 
   int? _selectedFundId;
@@ -46,6 +47,11 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
   String? _selectedImagePath;
   File? _selectedImageFile;
   bool _isSaving = false;
+  String _searchQuery = '';
+  RemittanceType? _selectedTypeFilter;
+  RemittanceStatus? _selectedStatusFilter;
+  int? _selectedFundFilterId;
+  int? _selectedCustomerFilterId;
 
   @override
   void initState() {
@@ -548,39 +554,166 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
               return const Center(child: CircularProgressIndicator());
             }
             final remittances = snapshot.data![0] as List<Remittance>;
+            final funds = snapshot.data![2] as List<Fund>;
+            final customers = snapshot.data![1] as List<Customer>;
             if (remittances.isEmpty) {
               return const Center(child: Text('No remittances yet.'));
             }
+            final filteredRemittances = remittances.where((remittance) {
+              final fund = funds.where((item) => item.id == remittance.fundId).isEmpty
+                  ? null
+                  : funds.firstWhere((item) => item.id == remittance.fundId);
+              final customer = customers.where((item) => item.id == remittance.customerId).isEmpty
+                  ? null
+                  : customers.firstWhere((item) => item.id == remittance.customerId);
+              final query = _searchQuery.trim().toLowerCase();
+              final amountText = remittance.amount.toStringAsFixed(2);
+              final chargeText = remittance.charge.toStringAsFixed(2);
+              final matchesQuery = query.isEmpty ||
+                  remittance.referenceNumber.toLowerCase().contains(query) ||
+                  amountText.contains(query) ||
+                  chargeText.contains(query) ||
+                  (remittance.notes?.toLowerCase().contains(query) ?? false) ||
+                  (customer?.name.toLowerCase().contains(query) ?? false) ||
+                  (fund?.name.toLowerCase().contains(query) ?? false);
+              final matchesType = _selectedTypeFilter == null || remittance.remittanceType == _selectedTypeFilter;
+              final matchesStatus = _selectedStatusFilter == null || remittance.remittanceStatus == _selectedStatusFilter;
+              final matchesFund = _selectedFundFilterId == null || remittance.fundId == _selectedFundFilterId;
+              final matchesCustomer = _selectedCustomerFilterId == null || remittance.customerId == _selectedCustomerFilterId;
+              return matchesQuery && matchesType && matchesStatus && matchesFund && matchesCustomer;
+            }).toList();
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.swap_horiz_rounded, color: Colors.green),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text('Remittance overview', style: TextStyle(fontWeight: FontWeight.bold)),
-                            SizedBox(height: 4),
-                            Text('Keep financial movement clear and easy to review.'),
-                          ],
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Remittances',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Search reference, customer, or notes',
+                            prefixIcon: const Icon(Icons.search),
+                            isDense: true,
+                            suffixIcon: _searchController.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _searchQuery = '');
+                                    },
+                                  ),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onChanged: (value) => setState(() => _searchQuery = value.trim().toLowerCase()),
+                        ),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 95,
+                                child: DropdownButtonFormField<RemittanceType?>(
+                                  initialValue: _selectedTypeFilter,
+                                  decoration: const InputDecoration(labelText: 'Type', isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 4)),
+                                  items: [
+                                    const DropdownMenuItem<RemittanceType?>(value: null, child: Text('All', overflow: TextOverflow.ellipsis)),
+                                    const DropdownMenuItem(value: RemittanceType.cashIn, child: Text('In', overflow: TextOverflow.ellipsis)),
+                                    const DropdownMenuItem(value: RemittanceType.cashOut, child: Text('Out', overflow: TextOverflow.ellipsis)),
+                                  ],
+                                  onChanged: (value) => setState(() => _selectedTypeFilter = value),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              SizedBox(
+                                width: 110,
+                                child: DropdownButtonFormField<RemittanceStatus?>(
+                                  initialValue: _selectedStatusFilter,
+                                  decoration: const InputDecoration(labelText: 'Status', isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 4)),
+                                  items: [
+                                    const DropdownMenuItem<RemittanceStatus?>(value: null, child: Text('All', overflow: TextOverflow.ellipsis)),
+                                    const DropdownMenuItem(value: RemittanceStatus.pending, child: Text('Pending', overflow: TextOverflow.ellipsis)),
+                                    const DropdownMenuItem(value: RemittanceStatus.receivedByCustomer, child: Text('Received', overflow: TextOverflow.ellipsis)),
+                                  ],
+                                  onChanged: (value) => setState(() => _selectedStatusFilter = value),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              SizedBox(
+                                width: 95,
+                                child: DropdownButtonFormField<int?>(
+                                  initialValue: _selectedFundFilterId,
+                                  decoration: const InputDecoration(labelText: 'Fund', isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 4)),
+                                  items: [
+                                    const DropdownMenuItem<int?>(value: null, child: Text('All', overflow: TextOverflow.ellipsis)),
+                                    ...funds.where((fund) => fund.fundType == FundType.eCash).map((fund) => DropdownMenuItem<int?>(value: fund.id, child: Text(fund.name, overflow: TextOverflow.ellipsis))),
+                                  ],
+                                  onChanged: (value) => setState(() => _selectedFundFilterId = value),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              SizedBox(
+                                width: 115,
+                                child: DropdownButtonFormField<int?>(
+                                  initialValue: _selectedCustomerFilterId,
+                                  decoration: const InputDecoration(labelText: 'Customer', isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 4)),
+                                  items: [
+                                    const DropdownMenuItem<int?>(value: null, child: Text('All', overflow: TextOverflow.ellipsis)),
+                                    ...customers.map((customer) => DropdownMenuItem<int?>(value: customer.id, child: Text(customer.name, overflow: TextOverflow.ellipsis))),
+                                  ],
+                                  onChanged: (value) => setState(() => _selectedCustomerFilterId = value),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextButton.icon(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                              _selectedTypeFilter = null;
+                              _selectedStatusFilter = null;
+                              _selectedFundFilterId = null;
+                              _selectedCustomerFilterId = null;
+                            });
+                          },
+                          icon: const Icon(Icons.clear_all, size: 18),
+                          label: const Text('Clear filters'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                ...remittances.map((remittance) {
-                  final funds = snapshot.data![2] as List<Fund>;
-                  final customers = snapshot.data![1] as List<Customer>;
+                if (filteredRemittances.isEmpty)
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Center(
+                        child: Text(
+                          'No remittances match the current filters.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ...filteredRemittances.map((remittance) {
                   final fund = funds.where((item) => item.id == remittance.fundId).isEmpty
                       ? null
                       : funds.firstWhere((item) => item.id == remittance.fundId);
@@ -621,6 +754,11 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
     _amountController.dispose();
     _chargeController.dispose();
     _notesController.dispose();
+    _editReferenceController.dispose();
+    _editAmountController.dispose();
+    _editChargeController.dispose();
+    _editNotesController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 }
