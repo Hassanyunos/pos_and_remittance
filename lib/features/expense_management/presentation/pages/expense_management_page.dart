@@ -104,7 +104,7 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
             color: Theme.of(context).colorScheme.primaryContainer,
             borderRadius: BorderRadius.circular(20),
           ),
-          child: const Row(
+          child: Row(
             children: [
               Icon(Icons.receipt_long_rounded, color: Colors.orange),
               SizedBox(width: 12),
@@ -133,7 +133,6 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
                     Text('Amount: ${NumberFormat.currency(symbol: '₱').format(expense.amount)}'),
                     Text('Fund: ${_fundName(expense.fundId)}'),
                     Text('Date: ${DateFormat('MMM dd, yyyy hh:mm a').format(expense.expenseDate)}'),
-                    if (expense.details != null && expense.details!.isNotEmpty) Text('Details: ${expense.details}'),
                     if (expense.notes != null && expense.notes!.isNotEmpty) Text('Notes: ${expense.notes}'),
                   ],
                 ),
@@ -173,7 +172,6 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
   late final TextEditingController _amountController;
   late final TextEditingController _personController;
   late final TextEditingController _purposeController;
-  late final TextEditingController _detailsController;
   late final TextEditingController _notesController;
   late DateTime _expenseDate;
   late int? _selectedFundId;
@@ -185,7 +183,6 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
     _amountController = TextEditingController(text: widget.expense?.amount.toStringAsFixed(2) ?? '0.00');
     _personController = TextEditingController(text: widget.expense?.personName ?? '');
     _purposeController = TextEditingController(text: widget.expense?.purpose ?? '');
-    _detailsController = TextEditingController(text: widget.expense?.details ?? '');
     _notesController = TextEditingController(text: widget.expense?.notes ?? '');
     _expenseDate = widget.expense?.expenseDate ?? DateTime.now();
     _selectedFundId = widget.expense?.fundId ?? (widget.funds.isNotEmpty ? widget.funds.first.id : null);
@@ -232,7 +229,6 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
           expenseDate: _expenseDate,
           personName: _personController.text,
           purpose: _purposeController.text,
-          details: _detailsController.text,
           notes: _notesController.text,
         );
       } else {
@@ -243,7 +239,6 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
           expenseDate: _expenseDate,
           personName: _personController.text,
           purpose: _purposeController.text,
-          details: _detailsController.text,
           notes: _notesController.text,
         );
       }
@@ -299,12 +294,6 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
-                    controller: _detailsController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(labelText: 'Other details'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
                     controller: _notesController,
                     maxLines: 3,
                     decoration: const InputDecoration(labelText: 'Notes'),
@@ -339,7 +328,6 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
     _amountController.dispose();
     _personController.dispose();
     _purposeController.dispose();
-    _detailsController.dispose();
     _notesController.dispose();
     super.dispose();
   }
