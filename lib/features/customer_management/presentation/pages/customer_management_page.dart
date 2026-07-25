@@ -21,11 +21,13 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
   final _contactController = TextEditingController();
+  final _searchController = TextEditingController();
   final _picker = ImagePicker();
   Customer? _editingCustomer;
   bool _isSaving = false;
   File? _selectedImageFile;
   String? _selectedImagePath;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -310,8 +312,14 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
               return const Center(child: CircularProgressIndicator());
             }
             final customers = snapshot.data!;
-            if (customers.isEmpty) {
-              return const Center(child: Text('No customers yet.'));
+            final filteredCustomers = customers.where((customer) {
+              final query = _searchQuery.trim().toLowerCase();
+              if (query.isEmpty) return true;
+              final searchableText = [customer.name, customer.address ?? '', customer.contactNumber ?? ''].join(' ').toLowerCase();
+              return searchableText.contains(query);
+            }).toList();
+            if (filteredCustomers.isEmpty) {
+              return const Center(child: Text('No customers match the current search.'));
             }
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
@@ -322,7 +330,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                     color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Icon(Icons.people_alt_rounded, color: Colors.blue),
                       SizedBox(width: 12),
@@ -340,7 +348,35 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...customers.map((customer) => Card(
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search by name, address, or contact',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchController.text.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              ),
+                        border: InputBorder.none,
+                      ),
+                      onChanged: (value) => setState(() => _searchQuery = value.trim().toLowerCase()),
+                    ),
+                  ),
+                ),
+                ...filteredCustomers.map((customer) => Card(
                       child: ListTile(
                         leading: CircleAvatar(child: Text(customer.name.isNotEmpty ? customer.name[0].toUpperCase() : 'C')),
                         title: Text(customer.name),
@@ -378,6 +414,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     _nameController.dispose();
     _addressController.dispose();
     _contactController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 }
