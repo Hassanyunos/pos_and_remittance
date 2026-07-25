@@ -11,13 +11,15 @@ import '../../features/fund_management/data/repositories/fund_repository.dart';
 import '../../features/grocery_stock_management/data/repositories/grocery_stock_category_repository.dart';
 import '../../features/grocery_stock_management/data/repositories/grocery_stock_repository.dart';
 import '../../features/remittance_management/data/repositories/remittance_repository.dart';
+import '../../features/sales_management/data/repositories/sale_item_repository.dart';
+import '../../features/sales_management/data/repositories/sale_repository.dart';
 import 'database_seeder.dart';
 
 class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
   static const _databaseName = 'pos_remittance.db';
-  static const _databaseVersion = 9;
+  static const _databaseVersion = 11;
   Database? _database;
   UserRepository? userRepository;
   FundRepository? fundRepository;
@@ -26,6 +28,8 @@ class AppDatabase {
   ExpenseRepository? expenseRepository;
   GroceryStockRepository? groceryStockRepository;
   GroceryStockCategoryRepository? groceryStockCategoryRepository;
+  SaleRepository? saleRepository;
+  SaleItemRepository? saleItemRepository;
 
   Future<Database> get database async {
     if (_database != null) {
@@ -54,6 +58,27 @@ class AppDatabase {
     expenseRepository = ExpenseRepository(database);
     groceryStockRepository = GroceryStockRepository(database);
     groceryStockCategoryRepository = GroceryStockCategoryRepository(database);
+    saleRepository = SaleRepository(database);
+    saleItemRepository = SaleItemRepository(database);
+  }
+
+  Future<double> getDashboardTarget(String name) async {
+    final database = await this.database;
+    final rows = await database.query('dashboard_targets', where: 'name = ?', whereArgs: [name], limit: 1);
+    if (rows.isEmpty) {
+      return 0;
+    }
+    return (rows.first['daily_target'] as num).toDouble();
+  }
+
+  Future<void> saveDashboardTarget(String name, double dailyTarget) async {
+    final database = await this.database;
+    final existing = await database.query('dashboard_targets', where: 'name = ?', whereArgs: [name], limit: 1);
+    if (existing.isEmpty) {
+      await database.insert('dashboard_targets', {'name': name, 'daily_target': dailyTarget});
+    } else {
+      await database.update('dashboard_targets', {'daily_target': dailyTarget}, where: 'name = ?', whereArgs: [name]);
+    }
   }
 
   Future<void> _createTables(Database database, int version) async {
@@ -133,6 +158,37 @@ class AppDatabase {
         category TEXT NOT NULL DEFAULT 'General',
         expiration_date TEXT,
         notes TEXT
+      )
+    ''');
+    await database.execute('''
+      CREATE TABLE sales (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        receipt_number TEXT NOT NULL UNIQUE,
+        customer_id INTEGER,
+        customer_name TEXT,
+        total_price REAL NOT NULL DEFAULT 0,
+        amount_payable REAL NOT NULL DEFAULT 0,
+        amount_paid REAL NOT NULL DEFAULT 0,
+        change_amount REAL NOT NULL DEFAULT 0,
+        sold_at TEXT NOT NULL
+      )
+    ''');
+    await database.execute('''
+      CREATE TABLE sale_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sale_id INTEGER NOT NULL,
+        item_name TEXT NOT NULL,
+        item_barcode TEXT NOT NULL,
+        quantity_bought INTEGER NOT NULL DEFAULT 1,
+        retail_price REAL NOT NULL DEFAULT 0,
+        FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
+      )
+    ''');
+    await database.execute('''
+      CREATE TABLE dashboard_targets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        daily_target REAL NOT NULL DEFAULT 0
       )
     ''');
   }
@@ -229,6 +285,41 @@ class AppDatabase {
           category TEXT NOT NULL DEFAULT 'General',
           expiration_date TEXT,
           notes TEXT
+        )
+      ''');
+    }
+    if (oldVersion < 10) {
+      await database.execute('''
+        CREATE TABLE IF NOT EXISTS sales (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          receipt_number TEXT NOT NULL UNIQUE,
+          customer_id INTEGER,
+          customer_name TEXT,
+          total_price REAL NOT NULL DEFAULT 0,
+          amount_payable REAL NOT NULL DEFAULT 0,
+          amount_paid REAL NOT NULL DEFAULT 0,
+          change_amount REAL NOT NULL DEFAULT 0,
+          sold_at TEXT NOT NULL
+        )
+      ''');
+      await database.execute('''
+        CREATE TABLE IF NOT EXISTS sale_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          sale_id INTEGER NOT NULL,
+          item_name TEXT NOT NULL,
+          item_barcode TEXT NOT NULL,
+          quantity_bought INTEGER NOT NULL DEFAULT 1,
+          retail_price REAL NOT NULL DEFAULT 0,
+          FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
+        )
+      ''');
+    }
+    if (oldVersion < 11) {
+      await database.execute('''
+        CREATE TABLE IF NOT EXISTS dashboard_targets (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          daily_target REAL NOT NULL DEFAULT 0
         )
       ''');
     }

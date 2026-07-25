@@ -9,6 +9,8 @@ import '../../../expense_management/presentation/pages/expense_management_page.d
 import '../../../fund_management/presentation/pages/fund_management_page.dart';
 import '../../../grocery_stock_management/presentation/pages/grocery_stock_management_page.dart';
 import '../../../remittance_management/presentation/pages/remittance_management_page.dart';
+import '../../../sales_management/presentation/pages/sales_management_page.dart';
+import 'dashboard_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -20,8 +22,15 @@ class HomePage extends StatelessWidget {
 
     final modules = <_ModuleCardData>[
       _ModuleCardData(
-        title: 'Customers',
-        subtitle: 'Manage customer profiles and pictures',
+        title: 'Business dashboard',
+        subtitle: 'View sales, remittance, loans, inventory, and expenses in one view',
+        icon: Icons.analytics_rounded,
+        color: const Color(0xFF2563EB),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const DashboardPage())),
+      ),
+      _ModuleCardData(
+        title: 'Customers & balances',
+        subtitle: 'Manage customer profiles and outstanding balances',
         icon: Icons.people_alt_rounded,
         color: const Color(0xFF3B82F6),
         onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const CustomerManagementPage())),
@@ -46,6 +55,13 @@ class HomePage extends StatelessWidget {
         icon: Icons.inventory_2_rounded,
         color: const Color(0xFF8B5CF6),
         onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const GroceryStockManagementPage())),
+      ),
+      _ModuleCardData(
+        title: 'Sales',
+        subtitle: 'Process point-of-sale transactions',
+        icon: Icons.point_of_sale_rounded,
+        color: const Color(0xFF0F766E),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SalesManagementPage())),
       ),
       if (user.isOwner)
         _ModuleCardData(
@@ -98,37 +114,7 @@ class HomePage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF2563EB), Color(0xFF4F46E5)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Welcome back, ${user.name}', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Text(user.email, style: const TextStyle(color: Colors.white70)),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: const Text('Operations dashboard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text('Modules', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text('Operations', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 12),
                     GridView.builder(
                       shrinkWrap: true,
@@ -137,7 +123,7 @@ class HomePage extends StatelessWidget {
                         crossAxisCount: 2,
                         mainAxisSpacing: 12,
                         crossAxisSpacing: 12,
-                        childAspectRatio: 1.15,
+                        childAspectRatio: 1.12,
                       ),
                       itemCount: modules.length,
                       itemBuilder: (context, index) {
@@ -166,7 +152,7 @@ class HomePage extends StatelessWidget {
                                 const Spacer(),
                                 Text(module.title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
-                                Text(module.subtitle, style: Theme.of(context).textTheme.bodySmall),
+                                Text(module.subtitle, style: Theme.of(context).textTheme.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
                               ],
                             ),
                           ),
