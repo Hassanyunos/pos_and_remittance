@@ -330,14 +330,14 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                     color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Row(
+                  child: const Row(
                     children: [
                       Icon(Icons.people_alt_rounded, color: Colors.blue),
                       SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
+                          children: [
                             Text('Customer directory', style: TextStyle(fontWeight: FontWeight.bold)),
                             SizedBox(height: 4),
                             Text('Track customer records with quick view and edit actions.'),
