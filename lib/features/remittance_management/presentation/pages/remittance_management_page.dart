@@ -630,10 +630,10 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
                                 child: DropdownButtonFormField<RemittanceType?>(
                                   initialValue: _selectedTypeFilter,
                                   decoration: const InputDecoration(labelText: 'Type', isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 4)),
-                                  items: [
-                                    const DropdownMenuItem<RemittanceType?>(value: null, child: Text('All', overflow: TextOverflow.ellipsis)),
-                                    const DropdownMenuItem(value: RemittanceType.cashIn, child: Text('In', overflow: TextOverflow.ellipsis)),
-                                    const DropdownMenuItem(value: RemittanceType.cashOut, child: Text('Out', overflow: TextOverflow.ellipsis)),
+                                  items: const [
+                                    DropdownMenuItem<RemittanceType?>(value: null, child: Text('All', overflow: TextOverflow.ellipsis)),
+                                    DropdownMenuItem(value: RemittanceType.cashIn, child: Text('In', overflow: TextOverflow.ellipsis)),
+                                    DropdownMenuItem(value: RemittanceType.cashOut, child: Text('Out', overflow: TextOverflow.ellipsis)),
                                   ],
                                   onChanged: (value) => setState(() => _selectedTypeFilter = value),
                                 ),
@@ -644,10 +644,10 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
                                 child: DropdownButtonFormField<RemittanceStatus?>(
                                   initialValue: _selectedStatusFilter,
                                   decoration: const InputDecoration(labelText: 'Status', isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 4)),
-                                  items: [
-                                    const DropdownMenuItem<RemittanceStatus?>(value: null, child: Text('All', overflow: TextOverflow.ellipsis)),
-                                    const DropdownMenuItem(value: RemittanceStatus.pending, child: Text('Pending', overflow: TextOverflow.ellipsis)),
-                                    const DropdownMenuItem(value: RemittanceStatus.receivedByCustomer, child: Text('Received', overflow: TextOverflow.ellipsis)),
+                                  items: const [
+                                    DropdownMenuItem<RemittanceStatus?>(value: null, child: Text('All', overflow: TextOverflow.ellipsis)),
+                                    DropdownMenuItem(value: RemittanceStatus.pending, child: Text('Pending', overflow: TextOverflow.ellipsis)),
+                                    DropdownMenuItem(value: RemittanceStatus.receivedByCustomer, child: Text('Received', overflow: TextOverflow.ellipsis)),
                                   ],
                                   onChanged: (value) => setState(() => _selectedStatusFilter = value),
                                 ),
