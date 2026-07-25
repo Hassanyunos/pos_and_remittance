@@ -34,6 +34,15 @@ class RemittanceService {
     if (charge < 0) throw ArgumentError('Charge cannot be negative.');
   }
 
+  void validateBalanceTransition({
+    required double updatedFundBalance,
+    required double updatedCashFundBalance,
+  }) {
+    if (updatedFundBalance < 0 || updatedCashFundBalance < 0) {
+      throw ArgumentError('This remittance would make a fund balance go negative.');
+    }
+  }
+
   Future<List<Remittance>> getRemittances() async {
     await AppDatabase.instance.database;
     return AppDatabase.instance.remittanceRepository!.getAll();
@@ -105,14 +114,24 @@ class RemittanceService {
     var updatedCashFundBalance = remittanceCashFund.currentBalance;
 
     if (remittanceType == RemittanceType.cashIn) {
+      if (fund.currentBalance < amount) {
+        throw ArgumentError('Selected fund does not have enough balance for this remittance.');
+      }
       updatedFundBalance -= amount;
       updatedCashFundBalance += amount + charge;
     } else {
       updatedFundBalance += amount;
       if (effectiveRemittanceStatus == RemittanceStatus.receivedByCustomer) {
+        if (remittanceCashFund.currentBalance + charge < amount) {
+          throw ArgumentError('The cash fund does not have enough balance for this remittance.');
+        }
         updatedCashFundBalance -= amount;
         updatedCashFundBalance += charge;
       }
+    }
+
+    if (updatedFundBalance < 0 || updatedCashFundBalance < 0) {
+      throw ArgumentError('This remittance would make a fund balance go negative.');
     }
 
     await fundRepository.update(fund.copyWith(currentBalance: updatedFundBalance));
@@ -172,15 +191,26 @@ class RemittanceService {
         : remittanceStatus;
 
     if (remittanceType == RemittanceType.cashIn) {
+      if (updatedFundBalance < amount) {
+        throw ArgumentError('Selected fund does not have enough balance for this remittance.');
+      }
       updatedFundBalance -= amount;
       updatedCashFundBalance += amount + charge;
     } else {
       updatedFundBalance += amount;
       if (effectiveRemittanceStatus == RemittanceStatus.receivedByCustomer) {
+        if (updatedCashFundBalance + charge < amount) {
+          throw ArgumentError('The cash fund does not have enough balance for this remittance.');
+        }
         updatedCashFundBalance -= amount;
         updatedCashFundBalance += charge;
       }
     }
+
+    validateBalanceTransition(
+      updatedFundBalance: updatedFundBalance,
+      updatedCashFundBalance: updatedCashFundBalance,
+    );
 
     final updatedRemittance = existingRemittance.copyWith(
       fundId: fund.id!,
