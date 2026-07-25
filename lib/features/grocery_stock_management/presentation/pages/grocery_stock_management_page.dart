@@ -524,7 +524,7 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
+                              children: [
                                 Text('Stock overview', style: TextStyle(fontWeight: FontWeight.bold)),
                                 SizedBox(height: 4),
                                 Text('Search, filter, and keep inventory visible at a glance.'),
