@@ -313,37 +313,59 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
             if (customers.isEmpty) {
               return const Center(child: Text('No customers yet.'));
             }
-            return ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: customers.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final customer = customers[index];
-                return Card(
-                  child: ListTile(
-                    title: Text(customer.name),
-                    subtitle: Text(
-                      [customer.address, customer.contactNumber]
-                          .where((value) => value != null && value.isNotEmpty)
-                          .cast<String>()
-                          .join(' • '),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.visibility),
-                          onPressed: () => _showCustomerDetails(customer),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () => _deleteCustomer(customer),
-                        ),
-                      ],
-                    ),
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                );
-              },
+                  child: const Row(
+                    children: [
+                      Icon(Icons.people_alt_rounded, color: Colors.blue),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text('Customer directory', style: TextStyle(fontWeight: FontWeight.bold)),
+                            SizedBox(height: 4),
+                            Text('Track customer records with quick view and edit actions.'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...customers.map((customer) => Card(
+                      child: ListTile(
+                        leading: CircleAvatar(child: Text(customer.name.isNotEmpty ? customer.name[0].toUpperCase() : 'C')),
+                        title: Text(customer.name),
+                        subtitle: Text(
+                          [customer.address, customer.contactNumber]
+                              .where((value) => value != null && value.isNotEmpty)
+                              .cast<String>()
+                              .join(' • '),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.visibility),
+                              onPressed: () => _showCustomerDetails(customer),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () => _deleteCustomer(customer),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )),
+              ],
             );
           },
         ),

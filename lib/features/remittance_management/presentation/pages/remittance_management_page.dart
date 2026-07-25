@@ -527,9 +527,7 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Remittance management'),
-      ),
+      appBar: AppBar(title: const Text('Remittance management')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final snapshot = await Future.wait([_remittancesFuture, _customersFuture, _fundsFuture]);
@@ -553,41 +551,63 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
             if (remittances.isEmpty) {
               return const Center(child: Text('No remittances yet.'));
             }
-            return ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: remittances.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final remittance = remittances[index];
-                final funds = snapshot.data![2] as List<Fund>;
-                final customers = snapshot.data![1] as List<Customer>;
-                final fund = funds.where((item) => item.id == remittance.fundId).isEmpty
-                    ? null
-                    : funds.firstWhere((item) => item.id == remittance.fundId);
-                final customer = customers.where((item) => item.id == remittance.customerId).isEmpty
-                    ? null
-                    : customers.firstWhere((item) => item.id == remittance.customerId);
-                return Card(
-                  child: ListTile(
-                    title: Text(remittance.referenceNumber),
-                    subtitle: Text(
-                      '${remittance.remittanceType.name == 'cashIn' ? 'Cash In' : 'Cash Out'} • ${remittance.amount.toStringAsFixed(2)} • ${remittance.charge.toStringAsFixed(2)}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.visibility),
-                          onPressed: () => _showRemittanceDetailsDialog(remittance: remittance, fund: fund, customer: customer),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () => _deleteRemittance(remittance),
-                        ),
-                      ],
-                    ),
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                );
-              },
+                  child: const Row(
+                    children: [
+                      Icon(Icons.swap_horiz_rounded, color: Colors.green),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text('Remittance overview', style: TextStyle(fontWeight: FontWeight.bold)),
+                            SizedBox(height: 4),
+                            Text('Keep financial movement clear and easy to review.'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...remittances.map((remittance) {
+                  final funds = snapshot.data![2] as List<Fund>;
+                  final customers = snapshot.data![1] as List<Customer>;
+                  final fund = funds.where((item) => item.id == remittance.fundId).isEmpty
+                      ? null
+                      : funds.firstWhere((item) => item.id == remittance.fundId);
+                  final customer = customers.where((item) => item.id == remittance.customerId).isEmpty
+                      ? null
+                      : customers.firstWhere((item) => item.id == remittance.customerId);
+                  return Card(
+                    child: ListTile(
+                      title: Text(remittance.referenceNumber),
+                      subtitle: Text('${remittance.remittanceType.name == 'cashIn' ? 'Cash In' : 'Cash Out'} • ${remittance.amount.toStringAsFixed(2)} • ${remittance.charge.toStringAsFixed(2)}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.visibility),
+                            onPressed: () => _showRemittanceDetailsDialog(remittance: remittance, fund: fund, customer: customer),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () => _deleteRemittance(remittance),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
             );
           },
         ),

@@ -382,23 +382,30 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search by name or barcode',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      ),
-                border: const OutlineInputBorder(),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
               ),
-              onChanged: (value) => setState(() => _searchQuery = value.trim().toLowerCase()),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search by name or barcode',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        ),
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value.trim().toLowerCase()),
+              ),
             ),
           ),
           Padding(
@@ -501,118 +508,141 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                   return const Center(child: Text('No stock items match the current filters.'));
                 }
 
-                return ListView.separated(
+                return ListView(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
-                  itemCount: filteredItems.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final item = filteredItems[index];
-                    final isOutOfStock = item.quantityInStock <= 0;
-                    final isLowStock = item.quantityInStock > 0 && item.quantityInStock <= item.minimumAlertQuantity;
-                    final isExpired = item.expirationDate != null && item.expirationDate!.isBefore(DateTime.now());
-                    final isExpiringSoon = item.expirationDate != null &&
-                        !item.expirationDate!.isBefore(DateTime.now()) &&
-                        item.expirationDate!.difference(DateTime.now()).inDays <= 30;
-                    final statusLabel = isExpired
-                        ? 'expired'
-                        : isExpiringSoon
-                            ? 'expire-soon'
-                            : isOutOfStock
-                                ? 'out-of-stock'
-                                : isLowStock
-                                    ? 'low-stock'
-                                    : '';
-                    return Card(
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-                        leading: item.picturePath != null
-                            ? Image.file(File(item.picturePath!), width: 44, height: 44, fit: BoxFit.cover)
-                            : const Icon(Icons.inventory_2, size: 36),
-                        title: Text(
-                          item.itemName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.stockNumber.isEmpty ? 'No barcode' : item.stockNumber,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.inventory_2_rounded, color: Colors.purple),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text('Stock overview', style: TextStyle(fontWeight: FontWeight.bold)),
+                                SizedBox(height: 4),
+                                Text('Search, filter, and keep inventory visible at a glance.'),
+                              ],
                             ),
-                            Text(
-                              '${item.quantityInStock} in stock • ${item.category}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (item.expirationDate != null)
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...filteredItems.map((item) {
+                      final isOutOfStock = item.quantityInStock <= 0;
+                      final isLowStock = item.quantityInStock > 0 && item.quantityInStock <= item.minimumAlertQuantity;
+                      final isExpired = item.expirationDate != null && item.expirationDate!.isBefore(DateTime.now());
+                      final isExpiringSoon = item.expirationDate != null &&
+                          !item.expirationDate!.isBefore(DateTime.now()) &&
+                          item.expirationDate!.difference(DateTime.now()).inDays <= 30;
+                      final statusLabel = isExpired
+                          ? 'expired'
+                          : isExpiringSoon
+                              ? 'expire-soon'
+                              : isOutOfStock
+                                  ? 'out-of-stock'
+                                  : isLowStock
+                                      ? 'low-stock'
+                                      : '';
+                      return Card(
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                          leading: item.picturePath != null
+                              ? Image.file(File(item.picturePath!), width: 44, height: 44, fit: BoxFit.cover)
+                              : const Icon(Icons.inventory_2, size: 36),
+                          title: Text(
+                            item.itemName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                'Expiry: ${DateFormat('yyyy-MM-dd').format(item.expirationDate!)}',
+                                item.stockNumber.isEmpty ? 'No barcode' : item.stockNumber,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                          ],
-                        ),
-                        trailing: ConstrainedBox(
-                          constraints: const BoxConstraints(minWidth: 0),
-                          child: Wrap(
-                            alignment: WrapAlignment.end,
-                            spacing: 4,
-                            runSpacing: 2,
-                            children: [
-                              if (statusLabel.isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: isExpired
-                                        ? const Color(0xFFFFE5E5)
-                                        : isExpiringSoon
-                                            ? const Color(0xFFFFF1F0)
-                                            : isOutOfStock
-                                                ? const Color(0xFFEAF3FF)
-                                                : const Color(0xFFFFF4E5),
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    statusLabel,
-                                    maxLines: 1,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: isExpired
-                                          ? const Color(0xFF8B0000)
-                                          : isExpiringSoon
-                                              ? Colors.red
-                                              : isOutOfStock
-                                                  ? Colors.blue
-                                                  : Colors.orange,
-                                    ),
-                                  ),
-                                ),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, size: 18),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                                    onPressed: () => _showItemDialog(item: item),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, size: 18),
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                                    onPressed: () => _deleteItem(item.id!),
-                                  ),
-                                ],
+                              Text(
+                                '${item.quantityInStock} in stock • ${item.category}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
+                              if (item.expirationDate != null)
+                                Text(
+                                  'Expiry: ${DateFormat('yyyy-MM-dd').format(item.expirationDate!)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                             ],
                           ),
+                          trailing: ConstrainedBox(
+                            constraints: const BoxConstraints(minWidth: 0),
+                            child: Wrap(
+                              alignment: WrapAlignment.end,
+                              spacing: 4,
+                              runSpacing: 2,
+                              children: [
+                                if (statusLabel.isNotEmpty)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: isExpired
+                                          ? const Color(0xFFFFE5E5)
+                                          : isExpiringSoon
+                                              ? const Color(0xFFFFF1F0)
+                                              : isOutOfStock
+                                                  ? const Color(0xFFEAF3FF)
+                                                  : const Color(0xFFFFF4E5),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      statusLabel,
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: isExpired
+                                            ? const Color(0xFF8B0000)
+                                            : isExpiringSoon
+                                                ? Colors.red
+                                                : isOutOfStock
+                                                    ? Colors.blue
+                                                    : Colors.orange,
+                                      ),
+                                    ),
+                                  ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit, size: 18),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                      onPressed: () => _showItemDialog(item: item),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete, size: 18),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                      onPressed: () => _deleteItem(item.id!),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    }),
+                  ],
                 );
               },
             ),

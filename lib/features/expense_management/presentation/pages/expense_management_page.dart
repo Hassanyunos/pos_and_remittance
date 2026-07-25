@@ -95,37 +95,58 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
     if (_loadError != null) return Center(child: Text('Failed to load expenses: $_loadError'));
     if (_expenses.isEmpty) return const Center(child: Text('No expenses recorded yet.'));
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _expenses.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, index) {
-        final expense = _expenses[index];
-        return Card(
-          child: ListTile(
-            leading: const Icon(Icons.receipt_long),
-            title: Text(expense.purpose),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Spent by: ${expense.personName}'),
-                Text('Amount: ${NumberFormat.currency(symbol: '₱').format(expense.amount)}'),
-                Text('Fund: ${_fundName(expense.fundId)}'),
-                Text('Date: ${DateFormat('MMM dd, yyyy hh:mm a').format(expense.expenseDate)}'),
-                if (expense.details != null && expense.details!.isNotEmpty) Text('Details: ${expense.details}'),
-                if (expense.notes != null && expense.notes!.isNotEmpty) Text('Notes: ${expense.notes}'),
-              ],
-            ),
-            trailing: Wrap(
-              spacing: 4,
-              children: [
-                IconButton(icon: const Icon(Icons.edit), tooltip: 'Edit', onPressed: () => _showExpenseForm(expense)),
-                IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Delete', onPressed: () => _deleteExpense(expense)),
-              ],
-            ),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(20),
           ),
-        );
-      },
+          child: const Row(
+            children: [
+              Icon(Icons.receipt_long_rounded, color: Colors.orange),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text('Expense log', style: TextStyle(fontWeight: FontWeight.bold)),
+                    SizedBox(height: 4),
+                    Text('Review all spending and adjust entries quickly.'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        ..._expenses.map((expense) => Card(
+              child: ListTile(
+                leading: const Icon(Icons.receipt_long),
+                title: Text(expense.purpose),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Spent by: ${expense.personName}'),
+                    Text('Amount: ${NumberFormat.currency(symbol: '₱').format(expense.amount)}'),
+                    Text('Fund: ${_fundName(expense.fundId)}'),
+                    Text('Date: ${DateFormat('MMM dd, yyyy hh:mm a').format(expense.expenseDate)}'),
+                    if (expense.details != null && expense.details!.isNotEmpty) Text('Details: ${expense.details}'),
+                    if (expense.notes != null && expense.notes!.isNotEmpty) Text('Notes: ${expense.notes}'),
+                  ],
+                ),
+                trailing: Wrap(
+                  spacing: 4,
+                  children: [
+                    IconButton(icon: const Icon(Icons.edit), tooltip: 'Edit', onPressed: () => _showExpenseForm(expense)),
+                    IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Delete', onPressed: () => _deleteExpense(expense)),
+                  ],
+                ),
+              ),
+            )),
+      ],
     );
   }
 
