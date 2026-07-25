@@ -148,8 +148,8 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                       TextFormField(
                         controller: _retailPriceController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Retail price'),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Enter retail price.' : null,
+                        decoration: const InputDecoration(labelText: 'Unit price'),
+                        validator: (value) => value == null || value.trim().isEmpty ? 'Enter unit price.' : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -572,6 +572,16 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                               ),
                               Text(
                                 '${item.quantityInStock} in stock • ${item.category}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                'Capital: ₱${item.capitalPrice.toStringAsFixed(2)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                'Unit price: ₱${item.retailPrice.toStringAsFixed(2)}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),

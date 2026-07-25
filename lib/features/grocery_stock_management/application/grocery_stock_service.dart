@@ -16,6 +16,7 @@ class GroceryStockService {
     if (quantityInStock < 0) throw ArgumentError('Stock quantity cannot be negative.');
     if (capitalPrice < 0) throw ArgumentError('Capital price cannot be negative.');
     if (retailPrice < 0) throw ArgumentError('Retail price cannot be negative.');
+    if (retailPrice <= capitalPrice) throw ArgumentError('Unit price must be higher than capital price to avoid losses.');
     if (minimumAlertQuantity < 0) throw ArgumentError('Minimum alert quantity cannot be negative.');
   }
 
