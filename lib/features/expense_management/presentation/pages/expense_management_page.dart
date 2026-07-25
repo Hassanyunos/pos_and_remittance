@@ -104,14 +104,14 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
             color: Theme.of(context).colorScheme.primaryContainer,
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Row(
+          child: const Row(
             children: [
               Icon(Icons.receipt_long_rounded, color: Colors.orange),
               SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text('Expense log', style: TextStyle(fontWeight: FontWeight.bold)),
                     SizedBox(height: 4),
                     Text('Review all spending and adjust entries quickly.'),
