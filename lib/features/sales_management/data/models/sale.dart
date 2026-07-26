@@ -9,6 +9,8 @@ class Sale {
     required this.amountPaid,
     required this.changeAmount,
     required this.soldAt,
+    this.outstandingBalance = 0,
+    this.isCreditSale = false,
   });
 
   final int? id;
@@ -20,6 +22,8 @@ class Sale {
   final double amountPaid;
   final double changeAmount;
   final DateTime soldAt;
+  final double outstandingBalance;
+  final bool isCreditSale;
 
   factory Sale.fromMap(Map<String, Object?> map) => Sale(
         id: map['id'] as int?,
@@ -31,6 +35,8 @@ class Sale {
         amountPaid: (map['amount_paid'] as num).toDouble(),
         changeAmount: (map['change_amount'] as num).toDouble(),
         soldAt: DateTime.parse(map['sold_at'] as String),
+        outstandingBalance: (map['outstanding_balance'] as num?)?.toDouble() ?? 0,
+        isCreditSale: (map['is_credit_sale'] as int?) == 1,
       );
 
   Map<String, Object?> toMap() => {
@@ -43,6 +49,8 @@ class Sale {
         'amount_paid': amountPaid,
         'change_amount': changeAmount,
         'sold_at': soldAt.toIso8601String(),
+        'outstanding_balance': outstandingBalance,
+        'is_credit_sale': isCreditSale ? 1 : 0,
       };
 
   Sale copyWith({
@@ -55,6 +63,8 @@ class Sale {
     double? amountPaid,
     double? changeAmount,
     DateTime? soldAt,
+    double? outstandingBalance,
+    bool? isCreditSale,
   }) => Sale(
         id: id ?? this.id,
         receiptNumber: receiptNumber ?? this.receiptNumber,
@@ -65,5 +75,7 @@ class Sale {
         amountPaid: amountPaid ?? this.amountPaid,
         changeAmount: changeAmount ?? this.changeAmount,
         soldAt: soldAt ?? this.soldAt,
+        outstandingBalance: outstandingBalance ?? this.outstandingBalance,
+        isCreditSale: isCreditSale ?? this.isCreditSale,
       );
 }
