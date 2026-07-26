@@ -13,10 +13,12 @@ class GroceryStockManagementPage extends StatefulWidget {
   const GroceryStockManagementPage({super.key});
 
   @override
-  State<GroceryStockManagementPage> createState() => _GroceryStockManagementPageState();
+  State<GroceryStockManagementPage> createState() =>
+      _GroceryStockManagementPageState();
 }
 
-class _GroceryStockManagementPageState extends State<GroceryStockManagementPage> {
+class _GroceryStockManagementPageState
+    extends State<GroceryStockManagementPage> {
   late Future<List<GroceryStockItem>> _stockItemsFuture;
   late Future<List<GroceryStockCategory>> _categoriesFuture;
   final _formKey = GlobalKey<FormState>();
@@ -70,7 +72,8 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
   }
 
   Future<void> _pickImage({required bool fromCamera}) async {
-    final pickedFile = await _picker.pickImage(source: fromCamera ? ImageSource.camera : ImageSource.gallery);
+    final pickedFile = await _picker.pickImage(
+        source: fromCamera ? ImageSource.camera : ImageSource.gallery);
     if (pickedFile == null) return;
     setState(() {
       _selectedImageFile = File(pickedFile.path);
@@ -91,7 +94,8 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
       _notesController.text = item.notes ?? '';
       _selectedExpirationDate = item.expirationDate;
       _selectedImagePath = item.picturePath;
-      _selectedImageFile = item.picturePath == null ? null : File(item.picturePath!);
+      _selectedImageFile =
+          item.picturePath == null ? null : File(item.picturePath!);
     } else {
       _itemNameController.clear();
       _stockNumberController.clear();
@@ -122,48 +126,71 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                     children: [
                       TextFormField(
                         controller: _itemNameController,
-                        decoration: const InputDecoration(labelText: 'Item name'),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Enter an item name.' : null,
+                        decoration:
+                            const InputDecoration(labelText: 'Item name'),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Enter an item name.'
+                                : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _stockNumberController,
-                        decoration: const InputDecoration(labelText: 'Barcode (optional)'),
+                        decoration: const InputDecoration(
+                            labelText: 'Barcode (optional)'),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _quantityController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Stock quantity'),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Enter stock quantity.' : null,
+                        decoration:
+                            const InputDecoration(labelText: 'Stock quantity'),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Enter stock quantity.'
+                                : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _capitalPriceController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Capital price'),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Enter capital price.' : null,
+                        decoration:
+                            const InputDecoration(labelText: 'Capital price'),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Enter capital price.'
+                                : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _retailPriceController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Unit price'),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Enter unit price.' : null,
+                        decoration:
+                            const InputDecoration(labelText: 'Unit price'),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Enter unit price.'
+                                : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _minimumAlertController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Minimum stock alert quantity'),
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Enter minimum alert quantity.' : null,
+                        decoration: const InputDecoration(
+                            labelText: 'Minimum stock alert quantity'),
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Enter minimum alert quantity.'
+                                : null,
                       ),
                       const SizedBox(height: 12),
                       FutureBuilder<List<GroceryStockCategory>>(
                         future: _categoriesFuture,
                         builder: (context, snapshot) {
-                          final categories = snapshot.data ?? const <GroceryStockCategory>[];
-                          final selectedCategory = _categoryController.text.trim();
+                          final categories =
+                              snapshot.data ?? const <GroceryStockCategory>[];
+                          final selectedCategory =
+                              _categoryController.text.trim();
                           final uniqueCategories = <String>{'General'};
                           for (final category in categories) {
                             if (category.name.trim().isNotEmpty) {
@@ -177,21 +204,28 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                             children: [
                               Expanded(
                                 child: DropdownButtonFormField<String>(
-                                  initialValue: selectedCategory.isEmpty ? 'General' : selectedCategory,
-                                  decoration: const InputDecoration(labelText: 'Category'),
+                                  initialValue: selectedCategory.isEmpty
+                                      ? 'General'
+                                      : selectedCategory,
+                                  decoration: const InputDecoration(
+                                      labelText: 'Category'),
                                   items: uniqueCategories
                                       .toList()
                                       .where((name) => name.isNotEmpty)
                                       .toList()
-                                      .map((name) => DropdownMenuItem<String>(value: name, child: Text(name)))
+                                      .map((name) => DropdownMenuItem<String>(
+                                          value: name, child: Text(name)))
                                       .toList(),
-                                  onChanged: (value) => setDialogState(() => _categoryController.text = value ?? 'General'),
+                                  onChanged: (value) => setDialogState(() =>
+                                      _categoryController.text =
+                                          value ?? 'General'),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               TextButton(
                                 onPressed: () async {
-                                  final categoryName = await _showCategoryDialog();
+                                  final categoryName =
+                                      await _showCategoryDialog();
                                   if (categoryName != null && mounted) {
                                     setDialogState(() {
                                       _categoryController.text = categoryName;
@@ -208,17 +242,24 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Expiration date (optional)'),
-                        subtitle: Text(_selectedExpirationDate == null ? 'Not set' : DateFormat('yyyy-MM-dd').format(_selectedExpirationDate!)),
+                        subtitle: Text(_selectedExpirationDate == null
+                            ? 'Not set'
+                            : DateFormat('yyyy-MM-dd')
+                                .format(_selectedExpirationDate!)),
                         trailing: const Icon(Icons.calendar_today),
                         onTap: () async {
                           final picked = await showDatePicker(
                             context: context,
-                            initialDate: _selectedExpirationDate ?? DateTime.now(),
-                            firstDate: DateTime.now().subtract(const Duration(days: 1)),
-                            lastDate: DateTime.now().add(const Duration(days: 3650)),
+                            initialDate:
+                                _selectedExpirationDate ?? DateTime.now(),
+                            firstDate: DateTime.now()
+                                .subtract(const Duration(days: 1)),
+                            lastDate:
+                                DateTime.now().add(const Duration(days: 3650)),
                           );
                           if (picked != null) {
-                            setDialogState(() => _selectedExpirationDate = picked);
+                            setDialogState(
+                                () => _selectedExpirationDate = picked);
                           }
                         },
                       ),
@@ -252,7 +293,8 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                         const SizedBox(height: 12),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.file(_selectedImageFile!, height: 160, fit: BoxFit.cover),
+                          child: Image.file(_selectedImageFile!,
+                              height: 160, fit: BoxFit.cover),
                         ),
                       ],
                     ],
@@ -260,7 +302,9 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+                TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('Cancel')),
                 FilledButton.icon(
                   onPressed: _isSaving ? null : () => _saveItem(dialogContext),
                   icon: const Icon(Icons.save),
@@ -286,15 +330,21 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
             decoration: const InputDecoration(labelText: 'Category name'),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), child: const Text('Save')),
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel')),
+            FilledButton(
+                onPressed: () =>
+                    Navigator.pop(dialogContext, controller.text.trim()),
+                child: const Text('Save')),
           ],
         );
       },
     );
 
     if (categoryName != null && categoryName.isNotEmpty) {
-      await GroceryStockCategoryService.instance.addCategory(name: categoryName);
+      await GroceryStockCategoryService.instance
+          .addCategory(name: categoryName);
       await _refreshItems();
     }
 
@@ -307,9 +357,12 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
 
     try {
       final quantity = int.tryParse(_quantityController.text.trim()) ?? 0;
-      final capitalPrice = double.tryParse(_capitalPriceController.text.trim()) ?? 0;
-      final retailPrice = double.tryParse(_retailPriceController.text.trim()) ?? 0;
-      final minimumAlert = int.tryParse(_minimumAlertController.text.trim()) ?? 0;
+      final capitalPrice =
+          double.tryParse(_capitalPriceController.text.trim()) ?? 0;
+      final retailPrice =
+          double.tryParse(_retailPriceController.text.trim()) ?? 0;
+      final minimumAlert =
+          int.tryParse(_minimumAlertController.text.trim()) ?? 0;
 
       if (_editingItem == null) {
         await GroceryStockService.instance.addStockItem(
@@ -344,10 +397,12 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
       Navigator.pop(dialogContext);
       await _refreshItems();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Stock item saved successfully.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Stock item saved successfully.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -360,11 +415,13 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
       await GroceryStockService.instance.deleteStockItem(id);
       await _refreshItems();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Stock item deleted.')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Stock item deleted.')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -404,7 +461,8 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                         ),
                   border: InputBorder.none,
                 ),
-                onChanged: (value) => setState(() => _searchQuery = value.trim().toLowerCase()),
+                onChanged: (value) =>
+                    setState(() => _searchQuery = value.trim().toLowerCase()),
               ),
             ),
           ),
@@ -413,8 +471,12 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
             child: FutureBuilder<List<GroceryStockCategory>>(
               future: _categoriesFuture,
               builder: (context, snapshot) {
-                final categories = snapshot.data ?? const <GroceryStockCategory>[];
-                final categoryOptions = ['all', ...categories.map((category) => category.name)];
+                final categories =
+                    snapshot.data ?? const <GroceryStockCategory>[];
+                final categoryOptions = [
+                  'all',
+                  ...categories.map((category) => category.name)
+                ];
                 return Row(
                   children: [
                     Expanded(
@@ -423,11 +485,18 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                         child: DropdownButtonFormField<String>(
                           isExpanded: true,
                           initialValue: _selectedCategoryFilter ?? 'all',
-                          decoration: const InputDecoration(labelText: 'Category', isDense: true),
+                          decoration: const InputDecoration(
+                              labelText: 'Category', isDense: true),
                           items: categoryOptions
-                              .map((value) => DropdownMenuItem<String>(value: value, child: Text(value == 'all' ? 'All categories' : value)))
+                              .map((value) => DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value == 'all'
+                                      ? 'All categories'
+                                      : value)))
                               .toList(),
-                          onChanged: (value) => setState(() => _selectedCategoryFilter = value == 'all' ? null : value),
+                          onChanged: (value) => setState(() =>
+                              _selectedCategoryFilter =
+                                  value == 'all' ? null : value),
                         ),
                       ),
                     ),
@@ -437,14 +506,19 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                         child: DropdownButtonFormField<String>(
                           isExpanded: true,
                           initialValue: _selectedExpiryFilter,
-                          decoration: const InputDecoration(labelText: 'Expiry', isDense: true),
+                          decoration: const InputDecoration(
+                              labelText: 'Expiry', isDense: true),
                           items: const [
                             DropdownMenuItem(value: 'all', child: Text('All')),
-                            DropdownMenuItem(value: 'expired', child: Text('Expired')),
-                            DropdownMenuItem(value: 'soon', child: Text('Expiring soon')),
-                            DropdownMenuItem(value: 'no-expiry', child: Text('No expiry')),
+                            DropdownMenuItem(
+                                value: 'expired', child: Text('Expired')),
+                            DropdownMenuItem(
+                                value: 'soon', child: Text('Expiring soon')),
+                            DropdownMenuItem(
+                                value: 'no-expiry', child: Text('No expiry')),
                           ],
-                          onChanged: (value) => setState(() => _selectedExpiryFilter = value ?? 'all'),
+                          onChanged: (value) => setState(
+                              () => _selectedExpiryFilter = value ?? 'all'),
                         ),
                       ),
                     ),
@@ -454,14 +528,19 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                         child: DropdownButtonFormField<String>(
                           isExpanded: true,
                           initialValue: _selectedStockFilter,
-                          decoration: const InputDecoration(labelText: 'Stock', isDense: true),
+                          decoration: const InputDecoration(
+                              labelText: 'Stock', isDense: true),
                           items: const [
                             DropdownMenuItem(value: 'all', child: Text('All')),
-                            DropdownMenuItem(value: 'low', child: Text('Low stock')),
-                            DropdownMenuItem(value: 'out', child: Text('Out of stock')),
-                            DropdownMenuItem(value: 'available', child: Text('Available')),
+                            DropdownMenuItem(
+                                value: 'low', child: Text('Low stock')),
+                            DropdownMenuItem(
+                                value: 'out', child: Text('Out of stock')),
+                            DropdownMenuItem(
+                                value: 'available', child: Text('Available')),
                           ],
-                          onChanged: (value) => setState(() => _selectedStockFilter = value ?? 'all'),
+                          onChanged: (value) => setState(
+                              () => _selectedStockFilter = value ?? 'all'),
                         ),
                       ),
                     ),
@@ -486,62 +565,54 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                   final matchesQuery = _searchQuery.isEmpty ||
                       item.itemName.toLowerCase().contains(_searchQuery) ||
                       item.stockNumber.toLowerCase().contains(_searchQuery);
-                  final matchesCategory = _selectedCategoryFilter == null || _selectedCategoryFilter!.isEmpty || item.category == _selectedCategoryFilter;
+                  final matchesCategory = _selectedCategoryFilter == null ||
+                      _selectedCategoryFilter!.isEmpty ||
+                      item.category == _selectedCategoryFilter;
                   final matchesExpiry = switch (_selectedExpiryFilter) {
-                    'expired' => item.expirationDate != null && item.expirationDate!.isBefore(DateTime.now()),
+                    'expired' => item.expirationDate != null &&
+                        item.expirationDate!.isBefore(DateTime.now()),
                     'soon' => item.expirationDate != null &&
                         !item.expirationDate!.isBefore(DateTime.now()) &&
-                        item.expirationDate!.difference(DateTime.now()).inDays <= 30,
+                        item.expirationDate!
+                                .difference(DateTime.now())
+                                .inDays <=
+                            30,
                     'no-expiry' => item.expirationDate == null,
                     _ => true,
                   };
                   final matchesStock = switch (_selectedStockFilter) {
                     'low' => item.quantityInStock <= item.minimumAlertQuantity,
                     'out' => item.quantityInStock <= 0,
-                    'available' => item.quantityInStock > item.minimumAlertQuantity,
+                    'available' =>
+                      item.quantityInStock > item.minimumAlertQuantity,
                     _ => true,
                   };
-                  return matchesQuery && matchesCategory && matchesExpiry && matchesStock;
+                  return matchesQuery &&
+                      matchesCategory &&
+                      matchesExpiry &&
+                      matchesStock;
                 }).toList();
 
                 if (filteredItems.isEmpty) {
-                  return const Center(child: Text('No stock items match the current filters.'));
+                  return const Center(
+                      child: Text('No stock items match the current filters.'));
                 }
 
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.inventory_2_rounded, color: Colors.purple),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Stock overview', style: TextStyle(fontWeight: FontWeight.bold)),
-                                SizedBox(height: 4),
-                                Text('Search, filter, and keep inventory visible at a glance.'),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     ...filteredItems.map((item) {
                       final isOutOfStock = item.quantityInStock <= 0;
-                      final isLowStock = item.quantityInStock > 0 && item.quantityInStock <= item.minimumAlertQuantity;
-                      final isExpired = item.expirationDate != null && item.expirationDate!.isBefore(DateTime.now());
+                      final isLowStock = item.quantityInStock > 0 &&
+                          item.quantityInStock <= item.minimumAlertQuantity;
+                      final isExpired = item.expirationDate != null &&
+                          item.expirationDate!.isBefore(DateTime.now());
                       final isExpiringSoon = item.expirationDate != null &&
                           !item.expirationDate!.isBefore(DateTime.now()) &&
-                          item.expirationDate!.difference(DateTime.now()).inDays <= 30;
+                          item.expirationDate!
+                                  .difference(DateTime.now())
+                                  .inDays <=
+                              30;
                       final statusLabel = isExpired
                           ? 'expired'
                           : isExpiringSoon
@@ -553,9 +624,11 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                                       : '';
                       return Card(
                         child: ListTile(
-                          contentPadding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                          contentPadding:
+                              const EdgeInsets.fromLTRB(12, 8, 8, 8),
                           leading: item.picturePath != null
-                              ? Image.file(File(item.picturePath!), width: 44, height: 44, fit: BoxFit.cover)
+                              ? Image.file(File(item.picturePath!),
+                                  width: 44, height: 44, fit: BoxFit.cover)
                               : const Icon(Icons.inventory_2, size: 36),
                           title: Text(
                             item.itemName,
@@ -566,7 +639,9 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                item.stockNumber.isEmpty ? 'No barcode' : item.stockNumber,
+                                item.stockNumber.isEmpty
+                                    ? 'No barcode'
+                                    : item.stockNumber,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -602,7 +677,8 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                               children: [
                                 if (statusLabel.isNotEmpty)
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
                                       color: isExpired
                                           ? const Color(0xFFFFE5E5)
@@ -635,13 +711,16 @@ class _GroceryStockManagementPageState extends State<GroceryStockManagementPage>
                                     IconButton(
                                       icon: const Icon(Icons.edit, size: 18),
                                       padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                                      onPressed: () => _showItemDialog(item: item),
+                                      constraints: const BoxConstraints(
+                                          minWidth: 28, minHeight: 28),
+                                      onPressed: () =>
+                                          _showItemDialog(item: item),
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.delete, size: 18),
                                       padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                      constraints: const BoxConstraints(
+                                          minWidth: 28, minHeight: 28),
                                       onPressed: () => _deleteItem(item.id!),
                                     ),
                                   ],
