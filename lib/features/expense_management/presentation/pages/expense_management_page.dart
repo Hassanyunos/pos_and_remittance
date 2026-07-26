@@ -60,8 +60,12 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
         title: const Text('Delete expense?'),
         content: const Text('This action cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes, delete')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('No')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Yes, delete')),
         ],
       ),
     );
@@ -72,7 +76,8 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
       await _reload();
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error.toString())));
       }
     }
   }
@@ -91,37 +96,19 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
   }
 
   Widget _buildExpenseList() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_loadError != null) return Center(child: Text('Failed to load expenses: $_loadError'));
-    if (_expenses.isEmpty) return const Center(child: Text('No expenses recorded yet.'));
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_loadError != null) {
+      return Center(child: Text('Failed to load expenses: $_loadError'));
+    }
+    if (_expenses.isEmpty) {
+      return const Center(child: Text('No expenses recorded yet.'));
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.receipt_long_rounded, color: Colors.orange),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Expense log', style: TextStyle(fontWeight: FontWeight.bold)),
-                    SizedBox(height: 4),
-                    Text('Review all spending and adjust entries quickly.'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
         ..._expenses.map((expense) => Card(
               child: ListTile(
                 leading: const Icon(Icons.receipt_long),
@@ -130,17 +117,26 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Spent by: ${expense.personName}'),
-                    Text('Amount: ${NumberFormat.currency(symbol: '₱').format(expense.amount)}'),
+                    Text(
+                        'Amount: ${NumberFormat.currency(symbol: '₱').format(expense.amount)}'),
                     Text('Fund: ${_fundName(expense.fundId)}'),
-                    Text('Date: ${DateFormat('MMM dd, yyyy hh:mm a').format(expense.expenseDate)}'),
-                    if (expense.notes != null && expense.notes!.isNotEmpty) Text('Notes: ${expense.notes}'),
+                    Text(
+                        'Date: ${DateFormat('MMM dd, yyyy hh:mm a').format(expense.expenseDate)}'),
+                    if (expense.notes != null && expense.notes!.isNotEmpty)
+                      Text('Notes: ${expense.notes}'),
                   ],
                 ),
                 trailing: Wrap(
                   spacing: 4,
                   children: [
-                    IconButton(icon: const Icon(Icons.edit), tooltip: 'Edit', onPressed: () => _showExpenseForm(expense)),
-                    IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Delete', onPressed: () => _deleteExpense(expense)),
+                    IconButton(
+                        icon: const Icon(Icons.edit),
+                        tooltip: 'Edit',
+                        onPressed: () => _showExpenseForm(expense)),
+                    IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: 'Delete',
+                        onPressed: () => _deleteExpense(expense)),
                   ],
                 ),
               ),
@@ -180,12 +176,16 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
   @override
   void initState() {
     super.initState();
-    _amountController = TextEditingController(text: widget.expense?.amount.toStringAsFixed(2) ?? '0.00');
-    _personController = TextEditingController(text: widget.expense?.personName ?? '');
-    _purposeController = TextEditingController(text: widget.expense?.purpose ?? '');
+    _amountController = TextEditingController(
+        text: widget.expense?.amount.toStringAsFixed(2) ?? '0.00');
+    _personController =
+        TextEditingController(text: widget.expense?.personName ?? '');
+    _purposeController =
+        TextEditingController(text: widget.expense?.purpose ?? '');
     _notesController = TextEditingController(text: widget.expense?.notes ?? '');
     _expenseDate = widget.expense?.expenseDate ?? DateTime.now();
-    _selectedFundId = widget.expense?.fundId ?? (widget.funds.isNotEmpty ? widget.funds.first.id : null);
+    _selectedFundId = widget.expense?.fundId ??
+        (widget.funds.isNotEmpty ? widget.funds.first.id : null);
   }
 
   Future<void> _pickDateTime() async {
@@ -246,7 +246,8 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -263,9 +264,13 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
                 children: [
                   TextFormField(
                     controller: _amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Amount spent'),
-                    validator: (value) => value == null || value.trim().isEmpty ? 'Enter amount.' : null,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration:
+                        const InputDecoration(labelText: 'Amount spent'),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Enter amount.'
+                        : null,
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
@@ -274,23 +279,30 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
                     items: widget.funds
                         .map((fund) => DropdownMenuItem<int>(
                               value: fund.id,
-                              child: Text('${fund.name} (${fund.currentBalance.toStringAsFixed(2)})'),
+                              child: Text(
+                                  '${fund.name} (${fund.currentBalance.toStringAsFixed(2)})'),
                             ))
                         .toList(),
-                    onChanged: (value) => setState(() => _selectedFundId = value),
-                    validator: (value) => value == null ? 'Select a fund.' : null,
+                    onChanged: (value) =>
+                        setState(() => _selectedFundId = value),
+                    validator: (value) =>
+                        value == null ? 'Select a fund.' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _personController,
                     decoration: const InputDecoration(labelText: 'Who took it'),
-                    validator: (value) => value == null || value.trim().isEmpty ? 'Enter the person name.' : null,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Enter the person name.'
+                        : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _purposeController,
                     decoration: const InputDecoration(labelText: 'Purpose'),
-                    validator: (value) => value == null || value.trim().isEmpty ? 'Enter the purpose.' : null,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Enter the purpose.'
+                        : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -302,11 +314,13 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
                   InkWell(
                     onTap: _isSaving ? null : _pickDateTime,
                     child: InputDecorator(
-                      decoration: const InputDecoration(labelText: 'Date and time'),
+                      decoration:
+                          const InputDecoration(labelText: 'Date and time'),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(DateFormat('MMM dd, yyyy hh:mm a').format(_expenseDate)),
+                          Text(DateFormat('MMM dd, yyyy hh:mm a')
+                              .format(_expenseDate)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -318,8 +332,18 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
           ),
         ),
         actions: [
-          TextButton(onPressed: _isSaving ? null : () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          FilledButton(onPressed: _isSaving ? null : _save, child: _isSaving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Save')),
+          TextButton(
+              onPressed:
+                  _isSaving ? null : () => Navigator.of(context).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: _isSaving ? null : _save,
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Save')),
         ],
       );
 
