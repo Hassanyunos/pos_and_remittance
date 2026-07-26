@@ -171,6 +171,7 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
         customerName: completion.customer?.name,
         cartItems: _cart,
         amountPaid: completion.amountPaid,
+        customerStatus: completion.customer?.status ?? CustomerStatus.standard,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sale completed successfully.')));
@@ -234,7 +235,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                       ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Enter a valid amount.')));
                       return;
                     }
-                    if (amountPaid < payableAmount) {
+                    final allowsCredit = selectedCustomer?.status == CustomerStatus.allowedToBorrow;
+                    if (!allowsCredit && amountPaid < payableAmount) {
                       ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Amount paid cannot be less than the amount due.')));
                       return;
                     }
@@ -554,6 +556,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
               Text('Cash received: ₱${sale.amountPaid.toStringAsFixed(2)}'),
               const SizedBox(height: 8),
               Text('Change: ₱${sale.changeAmount.toStringAsFixed(2)}'),
+              const SizedBox(height: 8),
+              Text('Outstanding balance: ₱${sale.outstandingBalance.toStringAsFixed(2)}'),
               const SizedBox(height: 12),
               const Text('Items bought', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
