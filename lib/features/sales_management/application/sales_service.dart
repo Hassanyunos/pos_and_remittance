@@ -1,4 +1,7 @@
 import '../../../core/database/app_database.dart';
+import '../../customer_management/data/models/customer.dart';
+import '../../customer_management/data/models/customer_balance_payment.dart';
+import '../../customer_management/data/repositories/customer_balance_payment_repository.dart';
 import '../../fund_management/data/models/fund.dart';
 import '../../fund_management/data/repositories/fund_repository.dart';
 import '../data/models/sale.dart';
@@ -27,11 +30,15 @@ class SalesTotals {
     required this.totalPrice,
     required this.amountPayable,
     required this.changeAmount,
+    required this.outstandingBalance,
+    required this.acceptsCredit,
   });
 
   final double totalPrice;
   final double amountPayable;
   final double changeAmount;
+  final double outstandingBalance;
+  final bool acceptsCredit;
 }
 
 class SalesService {
@@ -41,16 +48,23 @@ class SalesService {
   SalesTotals calculateSaleTotals({
     required List<SalesCartItem> cartItems,
     required double amountPaid,
+    CustomerStatus customerStatus = CustomerStatus.standard,
   }) {
     final totalPrice = cartItems.fold<double>(0, (sum, item) => sum + item.lineTotal);
-    if (amountPaid < totalPrice) {
+    final acceptsCredit = customerStatus == CustomerStatus.allowedToBorrow;
+
+    if (!acceptsCredit && amountPaid < totalPrice) {
       throw ArgumentError('Amount paid cannot be less than the payable amount.');
     }
+
+    final outstandingBalance = acceptsCredit && amountPaid < totalPrice ? totalPrice - amountPaid : 0.0;
 
     return SalesTotals(
       totalPrice: totalPrice,
       amountPayable: totalPrice,
-      changeAmount: amountPaid - totalPrice,
+      changeAmount: amountPaid >= totalPrice ? amountPaid - totalPrice : 0,
+      outstandingBalance: outstandingBalance,
+      acceptsCredit: acceptsCredit,
     );
   }
 
@@ -79,11 +93,12 @@ class SalesService {
   double calculateNetCashCollected({
     required double amountPaid,
     required double amountPayable,
+    required bool acceptsCredit,
   }) {
-    if (amountPaid < amountPayable) {
+    if (!acceptsCredit && amountPaid < amountPayable) {
       throw ArgumentError('Amount paid cannot be less than the payable amount.');
     }
-    return amountPayable;
+    return amountPaid;
   }
 
   Future<List<Sale>> getSales() async {
@@ -98,14 +113,21 @@ class SalesService {
     required List<SalesCartItem> cartItems,
     required double amountPaid,
     DateTime? soldAt,
+    CustomerStatus customerStatus = CustomerStatus.standard,
   }) async {
-    final totals = calculateSaleTotals(cartItems: cartItems, amountPaid: amountPaid);
+    final totals = calculateSaleTotals(
+      cartItems: cartItems,
+      amountPaid: amountPaid,
+      customerStatus: customerStatus,
+    );
     await AppDatabase.instance.database;
 
     final stockRepository = AppDatabase.instance.groceryStockRepository!;
     final saleRepository = AppDatabase.instance.saleRepository!;
     final saleItemRepository = AppDatabase.instance.saleItemRepository!;
     final fundRepository = AppDatabase.instance.fundRepository!;
+    final customerRepository = AppDatabase.instance.customerRepository!;
+    final balancePaymentRepository = CustomerBalancePaymentRepository(await AppDatabase.instance.database);
 
     final sale = Sale(
       receiptNumber: receiptNumber,
@@ -116,6 +138,8 @@ class SalesService {
       amountPaid: amountPaid,
       changeAmount: totals.changeAmount,
       soldAt: soldAt ?? DateTime.now(),
+      outstandingBalance: totals.outstandingBalance,
+      isCreditSale: totals.outstandingBalance > 0,
     );
 
     final createdSale = await saleRepository.create(sale);
@@ -146,7 +170,26 @@ class SalesService {
     final netCashCollected = calculateNetCashCollected(
       amountPaid: amountPaid,
       amountPayable: totals.amountPayable,
+      acceptsCredit: totals.acceptsCredit,
     );
+
+    if (customerId != null && totals.outstandingBalance > 0) {
+      final existingCustomer = await customerRepository.getById(customerId);
+      if (existingCustomer != null) {
+        final nextBalance = existingCustomer.currentBalance + totals.outstandingBalance;
+        await customerRepository.update(existingCustomer.copyWith(currentBalance: nextBalance));
+        await balancePaymentRepository.create(
+          CustomerBalancePayment(
+            customerId: customerId,
+            saleId: createdSale.id,
+            amount: totals.outstandingBalance,
+            paymentType: CustomerBalancePaymentType.credit,
+            note: 'Balance carried from sale ${createdSale.receiptNumber}',
+            createdAt: DateTime.now(),
+          ),
+        );
+      }
+    }
 
     Fund? groceryFund;
     final funds = await fundRepository.getAll();
