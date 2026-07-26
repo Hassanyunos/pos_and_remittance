@@ -4,7 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../remittance_management/data/repositories/remittance_repository.dart';
+import '../../../sales_management/data/repositories/sale_repository.dart';
+import '../../application/customer_balance_service.dart';
 import '../../data/models/customer.dart';
+import '../../data/models/customer_balance_payment.dart';
 import '../../data/repositories/customer_repository.dart';
 
 class CustomerManagementPage extends StatefulWidget {
@@ -12,6 +16,22 @@ class CustomerManagementPage extends StatefulWidget {
 
   @override
   State<CustomerManagementPage> createState() => _CustomerManagementPageState();
+}
+
+class _CustomerHistoryItem {
+  const _CustomerHistoryItem({
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    required this.createdAt,
+    required this.kind,
+  });
+
+  final String title;
+  final String subtitle;
+  final double amount;
+  final DateTime createdAt;
+  final String kind;
 }
 
 class _CustomerManagementPageState extends State<CustomerManagementPage> {
@@ -25,6 +45,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
   final _picker = ImagePicker();
   Customer? _editingCustomer;
   bool _isSaving = false;
+  CustomerStatus _selectedCustomerStatus = CustomerStatus.standard;
   File? _selectedImageFile;
   String? _selectedImagePath;
   String _searchQuery = '';
@@ -52,9 +73,14 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     final customer = Customer(
       id: _editingCustomer?.id,
       name: _nameController.text.trim(),
-      address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-      contactNumber: _contactController.text.trim().isEmpty ? null : _contactController.text.trim(),
+      address: _addressController.text.trim().isEmpty
+          ? null
+          : _addressController.text.trim(),
+      contactNumber: _contactController.text.trim().isEmpty
+          ? null
+          : _contactController.text.trim(),
       idPicturePath: _selectedImagePath,
+      status: _selectedCustomerStatus,
     );
 
     if (_editingCustomer == null) {
@@ -68,7 +94,10 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     await _refreshCustomers();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_editingCustomer == null ? 'Customer created.' : 'Customer updated.')),
+      SnackBar(
+          content: Text(_editingCustomer == null
+              ? 'Customer created.'
+              : 'Customer updated.')),
     );
     if (mounted) {
       setState(() => _isSaving = false);
@@ -82,6 +111,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     _selectedImageFile = null;
     _selectedImagePath = null;
     _editingCustomer = null;
+    _selectedCustomerStatus = CustomerStatus.standard;
     setState(() {});
   }
 
@@ -91,6 +121,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     _addressController.text = customer.address ?? '';
     _contactController.text = customer.contactNumber ?? '';
     _selectedImagePath = customer.idPicturePath;
+    _selectedCustomerStatus = customer.status;
     final imagePath = customer.idPicturePath;
     _selectedImageFile = imagePath == null ? null : File(imagePath);
     setState(() {});
@@ -111,8 +142,12 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
         title: const Text('Delete customer'),
         content: Text('Delete ${customer.name}?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete')),
         ],
       ),
     );
@@ -122,13 +157,15 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     await repository.delete(customer.id!);
     await _refreshCustomers();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Customer deleted.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Customer deleted.')));
     }
   }
 
   Future<void> _pickImage({required bool fromCamera}) async {
     final source = fromCamera ? ImageSource.camera : ImageSource.gallery;
-    final pickedFile = await _picker.pickImage(source: source, imageQuality: 90);
+    final pickedFile =
+        await _picker.pickImage(source: source, imageQuality: 90);
     if (pickedFile == null) return;
     setState(() {
       _selectedImageFile = File(pickedFile.path);
@@ -161,8 +198,12 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                   children: [
                     TextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(labelText: 'Customer name'),
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Enter a customer name.' : null,
+                      decoration:
+                          const InputDecoration(labelText: 'Customer name'),
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                              ? 'Enter a customer name.'
+                              : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -172,7 +213,28 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _contactController,
-                      decoration: const InputDecoration(labelText: 'Contact number'),
+                      decoration:
+                          const InputDecoration(labelText: 'Contact number'),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<CustomerStatus>(
+                      initialValue: _selectedCustomerStatus,
+                      decoration:
+                          const InputDecoration(labelText: 'Credit status'),
+                      items: const [
+                        DropdownMenuItem(
+                            value: CustomerStatus.standard,
+                            child: Text('Standard')),
+                        DropdownMenuItem(
+                            value: CustomerStatus.allowedToBorrow,
+                            child: Text('Allowed to borrow')),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() {
+                          _selectedCustomerStatus = value;
+                        });
+                      },
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -198,7 +260,8 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                       const SizedBox(height: 12),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.file(_selectedImageFile!, height: 160, fit: BoxFit.cover),
+                        child: Image.file(_selectedImageFile!,
+                            height: 160, fit: BoxFit.cover),
                       ),
                     ],
                   ],
@@ -207,11 +270,16 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel')),
             FilledButton.icon(
-              onPressed: _isSaving ? null : () => _saveCustomerFromDialog(dialogContext),
+              onPressed: _isSaving
+                  ? null
+                  : () => _saveCustomerFromDialog(dialogContext),
               icon: const Icon(Icons.save),
-              label: Text(customer == null ? 'Create customer' : 'Update customer'),
+              label: Text(
+                  customer == null ? 'Create customer' : 'Update customer'),
             ),
           ],
         );
@@ -223,6 +291,152 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     await _saveCustomer();
     if (!mounted || !dialogContext.mounted) return;
     Navigator.pop(dialogContext);
+  }
+
+  Future<void> _showBalanceDialog(Customer customer) async {
+    final balanceAmount = customer.currentBalance.toStringAsFixed(2);
+    final formKey = GlobalKey<FormState>();
+    final amountController = TextEditingController(text: balanceAmount);
+    final noteController = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Manage balance • ${customer.name}'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                  'Current balance: ₱${customer.currentBalance.toStringAsFixed(2)}'),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: amountController,
+                decoration: const InputDecoration(labelText: 'Payment amount'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Enter a payment amount.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: noteController,
+                decoration: const InputDecoration(labelText: 'Note (optional)'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              final amount = double.tryParse(amountController.text);
+              if (amount == null) return;
+              try {
+                await CustomerBalanceService.instance.recordBalancePayment(
+                    customerId: customer.id!,
+                    amount: amount,
+                    note: noteController.text);
+                if (!mounted) return;
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext, true);
+              } catch (error) {
+                if (!mounted) return;
+                if (!dialogContext.mounted) return;
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text(error.toString())));
+              }
+            },
+            child: const Text('Record payment'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      await _refreshCustomers();
+    }
+  }
+
+  Future<void> _showBalanceHistory(Customer customer) async {
+    final payments = await CustomerBalanceService.instance
+        .getPaymentsForCustomer(customer.id!);
+    final sales =
+        await SaleRepository(await AppDatabase.instance.database).getAll();
+    final remittances =
+        await RemittanceRepository(await AppDatabase.instance.database)
+            .getAll();
+    if (!mounted) return;
+
+    final history = <_CustomerHistoryItem>[
+      ...payments.map((payment) => _CustomerHistoryItem(
+            title: payment.paymentType == CustomerBalancePaymentType.payment
+                ? 'Balance payment'
+                : 'Balance carried',
+            subtitle: payment.note ?? 'No note',
+            amount: payment.amount,
+            createdAt: payment.createdAt,
+            kind: 'balance',
+          )),
+      ...sales
+          .where((sale) => sale.customerId == customer.id)
+          .map((sale) => _CustomerHistoryItem(
+                title: 'Purchase',
+                subtitle: sale.receiptNumber,
+                amount: sale.amountPayable,
+                createdAt: sale.soldAt,
+                kind: 'sale',
+              )),
+      ...remittances
+          .where((remittance) => remittance.customerId == customer.id)
+          .map((remittance) => _CustomerHistoryItem(
+                title: 'Remittance',
+                subtitle: remittance.referenceNumber,
+                amount: remittance.amount,
+                createdAt: remittance.processedAt ?? DateTime.now(),
+                kind: 'remittance',
+              )),
+    ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('History • ${customer.name}'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: history.isEmpty
+              ? const Text('No transaction history yet.')
+              : ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: history.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final item = history[index];
+                    return ListTile(
+                      title: Text(
+                          '${item.title} • ₱${item.amount.toStringAsFixed(2)}'),
+                      trailing: Text(
+                          item.createdAt.toLocal().toString().substring(0, 16)),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Close'))
+        ],
+      ),
+    );
   }
 
   void _showCustomerDetails(Customer customer) {
@@ -238,15 +452,21 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
           children: [
             Row(
               children: [
-                Expanded(child: Text(customer.name, style: Theme.of(context).textTheme.titleLarge)),
-                IconButton(onPressed: () => Navigator.pop(sheetContext), icon: const Icon(Icons.close)),
+                Expanded(
+                    child: Text(customer.name,
+                        style: Theme.of(context).textTheme.titleLarge)),
+                IconButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    icon: const Icon(Icons.close)),
               ],
             ),
             const SizedBox(height: 16),
-            if (customer.idPicturePath != null && customer.idPicturePath!.isNotEmpty)
+            if (customer.idPicturePath != null &&
+                customer.idPicturePath!.isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.file(File(customer.idPicturePath!), fit: BoxFit.cover),
+                child: Image.file(File(customer.idPicturePath!),
+                    fit: BoxFit.cover),
               )
             else
               const Text('No image attached.'),
@@ -257,12 +477,23 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
               Text(customer.address!),
               const SizedBox(height: 12),
             ],
-            if (customer.contactNumber != null && customer.contactNumber!.isNotEmpty) ...[
-              Text('Contact number', style: Theme.of(context).textTheme.titleMedium),
+            if (customer.contactNumber != null &&
+                customer.contactNumber!.isNotEmpty) ...[
+              Text('Contact number',
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 4),
               Text(customer.contactNumber!),
               const SizedBox(height: 12),
             ],
+            Text('Credit status',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text(customer.status == CustomerStatus.allowedToBorrow
+                ? 'Allowed to borrow'
+                : 'Standard'),
+            const SizedBox(height: 4),
+            Text(
+                'Current balance: ₱${customer.currentBalance.toStringAsFixed(2)}'),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -315,45 +546,27 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
             final filteredCustomers = customers.where((customer) {
               final query = _searchQuery.trim().toLowerCase();
               if (query.isEmpty) return true;
-              final searchableText = [customer.name, customer.address ?? '', customer.contactNumber ?? ''].join(' ').toLowerCase();
+              final searchableText = [
+                customer.name,
+                customer.address ?? '',
+                customer.contactNumber ?? ''
+              ].join(' ').toLowerCase();
               return searchableText.contains(query);
             }).toList();
             if (filteredCustomers.isEmpty) {
-              return const Center(child: Text('No customers match the current search.'));
+              return const Center(
+                  child: Text('No customers match the current search.'));
             }
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.people_alt_rounded, color: Colors.blue),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Customer directory', style: TextStyle(fontWeight: FontWeight.bold)),
-                            SizedBox(height: 4),
-                            Text('Track customer records with quick view and edit actions.'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: TextField(
@@ -372,31 +585,53 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                               ),
                         border: InputBorder.none,
                       ),
-                      onChanged: (value) => setState(() => _searchQuery = value.trim().toLowerCase()),
+                      onChanged: (value) => setState(
+                          () => _searchQuery = value.trim().toLowerCase()),
                     ),
                   ),
                 ),
                 ...filteredCustomers.map((customer) => Card(
                       child: ListTile(
-                        leading: CircleAvatar(child: Text(customer.name.isNotEmpty ? customer.name[0].toUpperCase() : 'C')),
+                        leading: CircleAvatar(
+                            child: Text(customer.name.isNotEmpty
+                                ? customer.name[0].toUpperCase()
+                                : 'C')),
                         title: Text(customer.name),
-                        subtitle: Text(
-                          [customer.address, customer.contactNumber]
-                              .where((value) => value != null && value.isNotEmpty)
-                              .cast<String>()
-                              .join(' • '),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              [customer.address, customer.contactNumber]
+                                  .where((value) =>
+                                      value != null && value.isNotEmpty)
+                                  .cast<String>()
+                                  .join(' • '),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              customer.status == CustomerStatus.allowedToBorrow
+                                  ? 'Allowed to borrow • Balance ₱${customer.currentBalance.toStringAsFixed(2)}'
+                                  : 'Standard • Balance ₱${customer.currentBalance.toStringAsFixed(2)}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.visibility),
-                              onPressed: () => _showCustomerDetails(customer),
-                            ),
+                                icon: const Icon(Icons.account_balance_wallet),
+                                onPressed: () => _showBalanceDialog(customer)),
                             IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () => _deleteCustomer(customer),
-                            ),
+                                icon: const Icon(Icons.history),
+                                onPressed: () => _showBalanceHistory(customer)),
+                            IconButton(
+                                icon: const Icon(Icons.visibility),
+                                onPressed: () =>
+                                    _showCustomerDetails(customer)),
+                            IconButton(
+                                icon: const Icon(Icons.delete),
+                                onPressed: () => _deleteCustomer(customer)),
                           ],
                         ),
                       ),
