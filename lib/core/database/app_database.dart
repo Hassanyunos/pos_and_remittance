@@ -5,6 +5,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../features/auth/data/repositories/user_repository.dart';
 import '../../features/auth/application/password_hasher.dart';
+import '../../features/customer_management/data/repositories/customer_balance_payment_repository.dart';
 import '../../features/customer_management/data/repositories/customer_repository.dart';
 import '../../features/expense_management/data/repositories/expense_repository.dart';
 import '../../features/fund_management/data/repositories/fund_repository.dart';
@@ -19,11 +20,12 @@ class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
   static const _databaseName = 'pos_remittance.db';
-  static const _databaseVersion = 11;
+  static const _databaseVersion = 12;
   Database? _database;
   UserRepository? userRepository;
   FundRepository? fundRepository;
   CustomerRepository? customerRepository;
+  CustomerBalancePaymentRepository? customerBalancePaymentRepository;
   RemittanceRepository? remittanceRepository;
   ExpenseRepository? expenseRepository;
   GroceryStockRepository? groceryStockRepository;
@@ -44,16 +46,46 @@ class AppDatabase {
           );
     _database = await openDatabase(databasePath, version: _databaseVersion,
         onCreate: _createTables, onUpgrade: _upgradeDatabase);
+    await _ensureSchema(_database!);
     _initializeRepositories(_database!);
     await DatabaseSeeder(userRepository!).seedOwnerUser();
     await fundRepository!.seedDefaultFunds();
     return _database!;
   }
 
+  Future<void> _ensureSchema(Database database) async {
+    await _ensureColumn(database, 'sales', 'outstanding_balance', 'REAL NOT NULL DEFAULT 0');
+    await _ensureColumn(database, 'sales', 'is_credit_sale', 'INTEGER NOT NULL DEFAULT 0');
+    await _ensureColumn(database, 'customers', 'status', "TEXT NOT NULL DEFAULT 'standard'");
+    await _ensureColumn(database, 'customers', 'current_balance', 'REAL NOT NULL DEFAULT 0');
+    await database.execute('''
+      CREATE TABLE IF NOT EXISTS customer_balance_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        sale_id INTEGER,
+        amount REAL NOT NULL DEFAULT 0,
+        payment_type TEXT NOT NULL,
+        note TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+        FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE SET NULL
+      )
+    ''');
+  }
+
+  Future<void> _ensureColumn(Database database, String tableName, String columnName, String columnDefinition) async {
+    final tableInfo = await database.rawQuery('PRAGMA table_info($tableName)');
+    final columnExists = tableInfo.any((row) => row['name'] == columnName);
+    if (!columnExists) {
+      await database.execute('ALTER TABLE $tableName ADD COLUMN $columnName $columnDefinition');
+    }
+  }
+
   void _initializeRepositories(Database database) {
     userRepository = UserRepository(database);
     fundRepository = FundRepository(database);
     customerRepository = CustomerRepository(database);
+    customerBalancePaymentRepository = CustomerBalancePaymentRepository(database);
     remittanceRepository = RemittanceRepository(database);
     expenseRepository = ExpenseRepository(database);
     groceryStockRepository = GroceryStockRepository(database);
@@ -106,7 +138,22 @@ class AppDatabase {
         name TEXT NOT NULL,
         address TEXT,
         contact_number TEXT,
-        id_picture_path TEXT
+        id_picture_path TEXT,
+        status TEXT NOT NULL DEFAULT 'standard',
+        current_balance REAL NOT NULL DEFAULT 0
+      )
+    ''');
+    await database.execute('''
+      CREATE TABLE customer_balance_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        sale_id INTEGER,
+        amount REAL NOT NULL DEFAULT 0,
+        payment_type TEXT NOT NULL,
+        note TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+        FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE SET NULL
       )
     ''');
     await database.execute('''
@@ -322,6 +369,25 @@ class AppDatabase {
           daily_target REAL NOT NULL DEFAULT 0
         )
       ''');
+    }
+    if (oldVersion < 12) {
+      await database.execute("ALTER TABLE customers ADD COLUMN status TEXT NOT NULL DEFAULT 'standard'");
+      await database.execute('ALTER TABLE customers ADD COLUMN current_balance REAL NOT NULL DEFAULT 0');
+      await database.execute('''
+        CREATE TABLE IF NOT EXISTS customer_balance_payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          customer_id INTEGER NOT NULL,
+          sale_id INTEGER,
+          amount REAL NOT NULL DEFAULT 0,
+          payment_type TEXT NOT NULL,
+          note TEXT,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+          FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE SET NULL
+        )
+      ''');
+      await database.execute("ALTER TABLE sales ADD COLUMN outstanding_balance REAL NOT NULL DEFAULT 0");
+      await database.execute("ALTER TABLE sales ADD COLUMN is_credit_sale INTEGER NOT NULL DEFAULT 0");
     }
   }
 }
