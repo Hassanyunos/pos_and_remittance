@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/ui/app_notice.dart';
+import '../../../laundry_management/application/laundry_service.dart';
 import '../../../remittance_management/data/repositories/remittance_repository.dart';
 import '../../../sales_management/data/repositories/sale_repository.dart';
 import '../../application/customer_balance_service.dart';
@@ -49,6 +51,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
   File? _selectedImageFile;
   String? _selectedImagePath;
   String _searchQuery = '';
+  _BalanceFilter _balanceFilter = _BalanceFilter.all;
 
   @override
   void initState() {
@@ -93,11 +96,8 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     _resetForm();
     await _refreshCustomers();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text(_editingCustomer == null
-              ? 'Customer created.'
-              : 'Customer updated.')),
+    AppNotice.success(
+      _editingCustomer == null ? 'Customer created.' : 'Customer updated.',
     );
     if (mounted) {
       setState(() => _isSaving = false);
@@ -157,8 +157,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     await repository.delete(customer.id!);
     await _refreshCustomers();
     if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Customer deleted.')));
+      AppNotice.success('Customer deleted.');
     }
   }
 
@@ -294,71 +293,145 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
   }
 
   Future<void> _showBalanceDialog(Customer customer) async {
-    final balanceAmount = customer.currentBalance.toStringAsFixed(2);
+    final customerId = customer.id;
+    if (customerId == null) return;
+    final laundryOutstanding = await LaundryService.instance
+        .getOutstandingBalanceForCustomer(customerId);
+    if (!mounted) return;
+    final groceryOutstanding = ((customer.currentBalance - laundryOutstanding)
+            .clamp(0.0, double.infinity))
+        .toDouble();
+    var target = laundryOutstanding > 0
+        ? _CustomerBalanceSettlementTarget.laundry
+        : _CustomerBalanceSettlementTarget.grocery;
+
+    double selectedOutstanding() {
+      return target == _CustomerBalanceSettlementTarget.laundry
+          ? laundryOutstanding
+          : groceryOutstanding;
+    }
+
     final formKey = GlobalKey<FormState>();
-    final amountController = TextEditingController(text: balanceAmount);
+    final amountController =
+        TextEditingController(text: selectedOutstanding().toStringAsFixed(2));
     final noteController = TextEditingController();
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Manage balance • ${customer.name}'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                  'Current balance: ₱${customer.currentBalance.toStringAsFixed(2)}'),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: amountController,
-                decoration: const InputDecoration(labelText: 'Payment amount'),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Enter a payment amount.';
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('Manage balance • ${customer.name}'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                    'Current balance: ₱${customer.currentBalance.toStringAsFixed(2)}'),
+                const SizedBox(height: 6),
+                Text(
+                    'Grocery balance: ₱${groceryOutstanding.toStringAsFixed(2)}'),
+                Text(
+                    'Laundry balance: ₱${laundryOutstanding.toStringAsFixed(2)}'),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<_CustomerBalanceSettlementTarget>(
+                  initialValue: target,
+                  decoration:
+                      const InputDecoration(labelText: 'Balance type to pay'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: _CustomerBalanceSettlementTarget.grocery,
+                      child: Text('Grocery balance'),
+                    ),
+                    DropdownMenuItem(
+                      value: _CustomerBalanceSettlementTarget.laundry,
+                      child: Text('Laundry balance'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setDialogState(() {
+                      target = value;
+                      amountController.text =
+                          selectedOutstanding().toStringAsFixed(2);
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: amountController,
+                  decoration:
+                      const InputDecoration(labelText: 'Payment amount'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Enter a payment amount.';
+                    }
+                    final parsed = double.tryParse(value.trim());
+                    if (parsed == null || parsed <= 0) {
+                      return 'Enter a valid payment amount.';
+                    }
+                    final maxAmount = selectedOutstanding();
+                    if (maxAmount <= 0) {
+                      return target == _CustomerBalanceSettlementTarget.laundry
+                          ? 'No remaining laundry balance.'
+                          : 'No remaining grocery balance.';
+                    }
+                    if (parsed > maxAmount) {
+                      return 'Payment cannot exceed selected balance.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: noteController,
+                  decoration:
+                      const InputDecoration(labelText: 'Note (optional)'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                if (!(formKey.currentState?.validate() ?? false)) return;
+                final amount = double.tryParse(amountController.text.trim());
+                if (amount == null) return;
+                try {
+                  if (target == _CustomerBalanceSettlementTarget.laundry) {
+                    await LaundryService.instance
+                        .recordCustomerLaundryBalancePayment(
+                      customerId: customerId,
+                      paymentAmount: amount,
+                      note: noteController.text,
+                    );
+                  } else {
+                    await CustomerBalanceService.instance.recordBalancePayment(
+                      customerId: customerId,
+                      amount: amount,
+                      source: CustomerBalancePaymentSource.grocery,
+                      note: noteController.text,
+                    );
                   }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: noteController,
-                decoration: const InputDecoration(labelText: 'Note (optional)'),
-              ),
-            ],
-          ),
+                  if (!mounted) return;
+                  if (!dialogContext.mounted) return;
+                  Navigator.pop(dialogContext, true);
+                } catch (error) {
+                  if (!mounted) return;
+                  if (!dialogContext.mounted) return;
+                  AppNotice.error(error.toString());
+                }
+              },
+              child: const Text('Record payment'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              if (!(formKey.currentState?.validate() ?? false)) return;
-              final amount = double.tryParse(amountController.text);
-              if (amount == null) return;
-              try {
-                await CustomerBalanceService.instance.recordBalancePayment(
-                    customerId: customer.id!,
-                    amount: amount,
-                    note: noteController.text);
-                if (!mounted) return;
-                if (!dialogContext.mounted) return;
-                Navigator.pop(dialogContext, true);
-              } catch (error) {
-                if (!mounted) return;
-                if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text(error.toString())));
-              }
-            },
-            child: const Text('Record payment'),
-          ),
-        ],
       ),
     );
 
@@ -380,9 +453,14 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     final history = <_CustomerHistoryItem>[
       ...payments.map((payment) => _CustomerHistoryItem(
             title: payment.paymentType == CustomerBalancePaymentType.payment
-                ? 'Balance payment'
-                : 'Balance carried',
-            subtitle: payment.note ?? 'No note',
+                ? 'Balance payment (${payment.source == CustomerBalancePaymentSource.laundry ? 'Laundry' : 'Grocery'})'
+                : 'Balance carried (${payment.source == CustomerBalancePaymentSource.laundry ? 'Laundry' : 'Grocery'})',
+            subtitle: payment.note ??
+                (payment.laundryOrderId != null
+                    ? 'Linked to laundry order #${payment.laundryOrderId}'
+                    : payment.saleId != null
+                        ? 'Linked to sale #${payment.saleId}'
+                        : 'No note'),
             amount: payment.amount,
             createdAt: payment.createdAt,
             kind: 'balance',
@@ -424,6 +502,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                     return ListTile(
                       title: Text(
                           '${item.title} • ₱${item.amount.toStringAsFixed(2)}'),
+                      subtitle: Text(item.subtitle),
                       trailing: Text(
                           item.createdAt.toLocal().toString().substring(0, 16)),
                     );
@@ -439,89 +518,77 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     );
   }
 
-  void _showCustomerDetails(Customer customer) {
-    showModalBottomSheet<void>(
+  Future<void> _showCustomerDetails(Customer customer) async {
+    await showDialog<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.75,
-        maxChildSize: 0.95,
-        builder: (sheetContext, scrollController) => ListView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(24),
-          children: [
-            Row(
+      builder: (dialogContext) => AlertDialog(
+        title: Text(customer.name),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                    child: Text(customer.name,
-                        style: Theme.of(context).textTheme.titleLarge)),
-                IconButton(
-                    onPressed: () => Navigator.pop(sheetContext),
-                    icon: const Icon(Icons.close)),
+                if (customer.idPicturePath != null &&
+                    customer.idPicturePath!.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(File(customer.idPicturePath!),
+                        fit: BoxFit.cover),
+                  )
+                else
+                  const Text('No image attached.'),
+                const SizedBox(height: 16),
+                if (customer.address != null &&
+                    customer.address!.isNotEmpty) ...[
+                  Text('Address',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(customer.address!),
+                  const SizedBox(height: 12),
+                ],
+                if (customer.contactNumber != null &&
+                    customer.contactNumber!.isNotEmpty) ...[
+                  Text('Contact number',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(customer.contactNumber!),
+                  const SizedBox(height: 12),
+                ],
+                Text('Credit status',
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 4),
+                Text(customer.status == CustomerStatus.allowedToBorrow
+                    ? 'Allowed to borrow'
+                    : 'Standard'),
+                const SizedBox(height: 4),
+                Text(
+                    'Current balance: ₱${customer.currentBalance.toStringAsFixed(2)}'),
               ],
             ),
-            const SizedBox(height: 16),
-            if (customer.idPicturePath != null &&
-                customer.idPicturePath!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(File(customer.idPicturePath!),
-                    fit: BoxFit.cover),
-              )
-            else
-              const Text('No image attached.'),
-            const SizedBox(height: 16),
-            if (customer.address != null && customer.address!.isNotEmpty) ...[
-              Text('Address', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(customer.address!),
-              const SizedBox(height: 12),
-            ],
-            if (customer.contactNumber != null &&
-                customer.contactNumber!.isNotEmpty) ...[
-              Text('Contact number',
-                  style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 4),
-              Text(customer.contactNumber!),
-              const SizedBox(height: 12),
-            ],
-            Text('Credit status',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(customer.status == CustomerStatus.allowedToBorrow
-                ? 'Allowed to borrow'
-                : 'Standard'),
-            const SizedBox(height: 4),
-            Text(
-                'Current balance: ₱${customer.currentBalance.toStringAsFixed(2)}'),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      Navigator.pop(sheetContext);
-                      _showCustomerDialog(customer: customer);
-                    },
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Edit'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    onPressed: () {
-                      Navigator.pop(sheetContext);
-                      _deleteCustomer(customer);
-                    },
-                    icon: const Icon(Icons.delete),
-                    label: const Text('Delete'),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Close')),
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _showCustomerDialog(customer: customer);
+            },
+            icon: const Icon(Icons.edit),
+            label: const Text('Edit'),
+          ),
+          FilledButton.tonalIcon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _deleteCustomer(customer);
+            },
+            icon: const Icon(Icons.delete),
+            label: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
@@ -543,23 +610,68 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
               return const Center(child: CircularProgressIndicator());
             }
             final customers = snapshot.data!;
+            final totalUnpaidBalance = customers.fold<double>(
+              0,
+              (sum, customer) => sum + customer.currentBalance,
+            );
             final filteredCustomers = customers.where((customer) {
               final query = _searchQuery.trim().toLowerCase();
-              if (query.isEmpty) return true;
-              final searchableText = [
-                customer.name,
-                customer.address ?? '',
-                customer.contactNumber ?? ''
-              ].join(' ').toLowerCase();
-              return searchableText.contains(query);
+              final matchesSearch = query.isEmpty
+                  ? true
+                  : [
+                      customer.name,
+                      customer.address ?? '',
+                      customer.contactNumber ?? ''
+                    ].join(' ').toLowerCase().contains(query);
+              final hasBalance = customer.currentBalance > 0;
+              final matchesBalance = switch (_balanceFilter) {
+                _BalanceFilter.all => true,
+                _BalanceFilter.withBalance => hasBalance,
+                _BalanceFilter.noBalance => !hasBalance,
+              };
+              return matchesSearch && matchesBalance;
             }).toList();
             if (filteredCustomers.isEmpty) {
               return const Center(
-                  child: Text('No customers match the current search.'));
+                  child: Text('No customers match the current filters.'));
             }
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
               children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.account_balance_wallet_rounded,
+                          color: Color(0xFFDC2626),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Total unpaid balance',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'P ${totalUnpaidBalance.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Container(
@@ -590,6 +702,37 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('All customers'),
+                      selected: _balanceFilter == _BalanceFilter.all,
+                      onSelected: (_) {
+                        setState(() => _balanceFilter = _BalanceFilter.all);
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text('With balance/debt'),
+                      selected: _balanceFilter == _BalanceFilter.withBalance,
+                      onSelected: (_) {
+                        setState(
+                            () => _balanceFilter = _BalanceFilter.withBalance);
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text('No balance'),
+                      selected: _balanceFilter == _BalanceFilter.noBalance,
+                      onSelected: (_) {
+                        setState(
+                            () => _balanceFilter = _BalanceFilter.noBalance);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
                 ...filteredCustomers.map((customer) => Card(
                       child: ListTile(
                         leading: CircleAvatar(
@@ -653,3 +796,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     super.dispose();
   }
 }
+
+enum _BalanceFilter { all, withBalance, noBalance }
+
+enum _CustomerBalanceSettlementTarget { grocery, laundry }
