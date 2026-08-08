@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/ui/app_notice.dart';
 import '../../application/auth_service.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -26,16 +27,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     if (!mounted) return;
     setState(() => _isSaving = false);
     if (result == ChangePasswordResult.success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password changed successfully.')),
-      );
+      AppNotice.success('Password changed successfully.');
       Navigator.of(context).pop();
       return;
     }
     final message = result == ChangePasswordResult.incorrectCurrentPassword
         ? 'Your current password is incorrect.'
         : 'You must be signed in to change your password.';
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    AppNotice.warning(message);
   }
 
   @override
@@ -54,7 +53,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       TextFormField(
                         controller: _currentPasswordController,
                         obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Current password'),
+                        decoration: const InputDecoration(
+                            labelText: 'Current password'),
                         validator: (value) => value == null || value.isEmpty
                             ? 'Enter your current password.'
                             : null,
@@ -63,7 +63,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       TextFormField(
                         controller: _newPasswordController,
                         obscureText: true,
-                        decoration: const InputDecoration(labelText: 'New password'),
+                        decoration:
+                            const InputDecoration(labelText: 'New password'),
                         validator: (value) => value == null || value.length < 6
                             ? 'Use at least 6 characters.'
                             : null,
@@ -72,10 +73,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       TextFormField(
                         controller: _confirmPasswordController,
                         obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Confirm new password'),
-                        validator: (value) => value != _newPasswordController.text
-                            ? 'Passwords do not match.'
-                            : null,
+                        decoration: const InputDecoration(
+                            labelText: 'Confirm new password'),
+                        validator: (value) =>
+                            value != _newPasswordController.text
+                                ? 'Passwords do not match.'
+                                : null,
                       ),
                       const SizedBox(height: 24),
                       FilledButton(
