@@ -8,11 +8,13 @@ class FundRepository {
   static const _tableName = 'funds';
   static const groceryCashName = 'GroceryCash';
   static const remittanceECashName = 'Remittance-Cash';
+  static const laundryCashName = 'LaundryCash';
   final Database _database;
 
   Future<void> seedDefaultFunds() async {
     await _seedIfMissing(groceryCashName, FundType.cash);
     await _seedIfMissing(remittanceECashName, FundType.cash);
+    await _seedIfMissing(laundryCashName, FundType.cash);
   }
 
   Future<void> _seedIfMissing(String name, FundType type) async {
