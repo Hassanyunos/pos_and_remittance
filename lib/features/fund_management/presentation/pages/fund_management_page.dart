@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/ui/app_notice.dart';
 import '../../../auth/application/auth_service.dart';
 import '../../application/fund_service.dart';
 import '../../data/models/fund.dart';
@@ -29,7 +30,8 @@ class _FundManagementPageState extends State<FundManagementPage> {
     try {
       final updatedFunds = await FundService.instance.getFunds();
       final totalFundBalance = await FundService.instance.getTotalFundBalance();
-      final totalGroceryCapital = await FundService.instance.getTotalGroceryCapital();
+      final totalGroceryCapital =
+          await FundService.instance.getTotalGroceryCapital();
       if (!mounted) return;
       setState(() {
         _funds = updatedFunds;
@@ -64,7 +66,9 @@ class _FundManagementPageState extends State<FundManagementPage> {
           'Are you sure you want to delete ${fund.name}? This action cannot be undone.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('No')),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Yes, delete'),
@@ -77,7 +81,7 @@ class _FundManagementPageState extends State<FundManagementPage> {
       await FundService.instance.deleteFund(fund.id!);
       await _reload();
     } on StateError catch (error) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      if (mounted) AppNotice.warning(error.message);
     }
   }
 
@@ -92,7 +96,8 @@ class _FundManagementPageState extends State<FundManagementPage> {
   @override
   Widget build(BuildContext context) {
     if (!(AuthService.instance.currentUser?.isOwner ?? false)) {
-      return const Scaffold(body: Center(child: Text('Only the owner can manage funds.')));
+      return const Scaffold(
+          body: Center(child: Text('Only the owner can manage funds.')));
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Fund management')),
@@ -120,8 +125,12 @@ class _FundManagementPageState extends State<FundManagementPage> {
   }
 
   Widget _buildFundList() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_loadError != null) return Center(child: Text('Failed to load funds: $_loadError'));
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_loadError != null) {
+      return Center(child: Text('Failed to load funds: $_loadError'));
+    }
 
     final itemCount = _funds.isEmpty ? 1 : _funds.length + 1;
     return ListView.separated(
@@ -136,10 +145,13 @@ class _FundManagementPageState extends State<FundManagementPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Summary', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Summary',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('Total funds: ${NumberFormat.currency(symbol: '₱').format(_totalFundBalance)}'),
-                  Text('Total grocery stock capital: ${NumberFormat.currency(symbol: '₱').format(_totalGroceryCapital)}'),
+                  Text(
+                      'Total funds: ${NumberFormat.currency(symbol: '₱').format(_totalFundBalance)}'),
+                  Text(
+                      'Total grocery stock capital: ${NumberFormat.currency(symbol: '₱').format(_totalGroceryCapital)}'),
                 ],
               ),
             ),
@@ -156,15 +168,24 @@ class _FundManagementPageState extends State<FundManagementPage> {
         final fund = _funds[index - 1];
         return Card(
           child: ListTile(
-            leading: Icon(fund.fundType == FundType.cash ? Icons.payments : Icons.account_balance_wallet),
+            leading: Icon(fund.fundType == FundType.cash
+                ? Icons.payments
+                : Icons.account_balance_wallet),
             title: Text(fund.name),
             subtitle: Text(fund.fundType == FundType.cash ? 'Cash' : 'eCash'),
             trailing: Wrap(
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text(NumberFormat.currency(symbol: '₱').format(fund.currentBalance)),
-                IconButton(icon: const Icon(Icons.edit), tooltip: 'Edit', onPressed: () => _showFundForm(fund)),
-                IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Delete', onPressed: () => _deleteFund(fund)),
+                Text(NumberFormat.currency(symbol: '₱')
+                    .format(fund.currentBalance)),
+                IconButton(
+                    icon: const Icon(Icons.edit),
+                    tooltip: 'Edit',
+                    onPressed: () => _showFundForm(fund)),
+                IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: 'Delete',
+                    onPressed: () => _deleteFund(fund)),
               ],
             ),
           ),
@@ -243,14 +264,16 @@ class _ZakahDialogState extends State<_ZakahDialog> {
         goldPricePerGram: goldPrice,
         silverPricePerGram: silverPrice,
       );
-      final eligibilityMessage = await FundService.instance.getCurrentZakatEligibilityMessage(
+      final eligibilityMessage =
+          await FundService.instance.getCurrentZakatEligibilityMessage(
         goldPricePerGram: goldPrice,
         silverPricePerGram: silverPrice,
       );
       if (!mounted) return;
       setState(() {
         _calculatedAmount = amount;
-        _eligibilityMessage = eligibilityMessage.isEmpty ? null : eligibilityMessage;
+        _eligibilityMessage =
+            eligibilityMessage.isEmpty ? null : eligibilityMessage;
         _isCalculating = false;
       });
     } catch (_) {
@@ -266,7 +289,7 @@ class _ZakahDialogState extends State<_ZakahDialog> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_selectedFundId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please choose a fund first.')));
+      AppNotice.warning('Please choose a fund first.');
       return;
     }
 
@@ -280,11 +303,11 @@ class _ZakahDialogState extends State<_ZakahDialog> {
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Zakat recorded successfully.')));
+      AppNotice.success('Zakat recorded successfully.');
     } catch (error) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      AppNotice.error(error.toString());
     }
   }
 
@@ -307,28 +330,41 @@ class _ZakahDialogState extends State<_ZakahDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Zakat is only taken once a year. The amount is based on the total funds and grocery stock capital.'),
+              const Text(
+                  'Zakat is only taken once a year. The amount is based on the total funds and grocery stock capital.'),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _goldController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Gold price per gram'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration:
+                    const InputDecoration(labelText: 'Gold price per gram'),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Enter a valid price.';
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Enter a valid price.';
+                  }
                   final parsed = double.tryParse(value);
-                  if (parsed == null || parsed <= 0) return 'Gold price must be greater than zero.';
+                  if (parsed == null || parsed <= 0) {
+                    return 'Gold price must be greater than zero.';
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _silverController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Silver price per gram'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration:
+                    const InputDecoration(labelText: 'Silver price per gram'),
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) return 'Enter a valid price.';
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Enter a valid price.';
+                  }
                   final parsed = double.tryParse(value);
-                  if (parsed == null || parsed <= 0) return 'Silver price must be greater than zero.';
+                  if (parsed == null || parsed <= 0) {
+                    return 'Silver price must be greater than zero.';
+                  }
                   return null;
                 },
               ),
@@ -337,19 +373,22 @@ class _ZakahDialogState extends State<_ZakahDialog> {
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
-                  child: Text(displayMessage, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  child: Text(displayMessage,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
                 ),
               ),
               const SizedBox(height: 12),
               if (_funds.isNotEmpty)
                 DropdownButtonFormField<int>(
                   initialValue: _selectedFundId,
-                  decoration: const InputDecoration(labelText: 'Deduct from fund'),
+                  decoration:
+                      const InputDecoration(labelText: 'Deduct from fund'),
                   items: [
                     for (final fund in _funds)
                       DropdownMenuItem<int>(
                         value: fund.id,
-                        child: Text('${fund.name} (${fund.fundType == FundType.cash ? 'Cash' : 'eCash'})'),
+                        child: Text(
+                            '${fund.name} (${fund.fundType == FundType.cash ? 'Cash' : 'eCash'})'),
                       ),
                   ],
                   onChanged: (value) => setState(() => _selectedFundId = value),
@@ -361,10 +400,24 @@ class _ZakahDialogState extends State<_ZakahDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _isSaving ? null : () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+        TextButton(
+            onPressed:
+                _isSaving ? null : () => Navigator.of(context).pop(false),
+            child: const Text('Cancel')),
         FilledButton(
-          onPressed: _isSaving || _calculatedAmount == null || _calculatedAmount! <= 0 || _eligibilityMessage != null || _selectedFundId == null ? null : _submit,
-          child: _isSaving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Take zakah'),
+          onPressed: _isSaving ||
+                  _calculatedAmount == null ||
+                  _calculatedAmount! <= 0 ||
+                  _eligibilityMessage != null ||
+                  _selectedFundId == null
+              ? null
+              : _submit,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Take zakah'),
         ),
       ],
     );
@@ -419,7 +472,7 @@ class _FundEditorDialogState extends State<_FundEditorDialog> {
     } on StateError catch (error) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      AppNotice.warning(error.message);
     }
   }
 
@@ -443,8 +496,10 @@ class _FundEditorDialogState extends State<_FundEditorDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _balanceController,
-                  decoration: const InputDecoration(labelText: 'Current balance'),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration:
+                      const InputDecoration(labelText: 'Current balance'),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   validator: (value) => double.tryParse(value ?? '') == null
                       ? 'Enter a valid amount.'
                       : null,
@@ -456,10 +511,13 @@ class _FundEditorDialogState extends State<_FundEditorDialog> {
                   items: FundType.values
                       .map((item) => DropdownMenuItem(
                             value: item,
-                            child: Text(item == FundType.cash ? 'Cash' : 'eCash'),
+                            child:
+                                Text(item == FundType.cash ? 'Cash' : 'eCash'),
                           ))
                       .toList(),
-                  onChanged: _isSaving ? null : (value) => setState(() => _type = value!),
+                  onChanged: _isSaving
+                      ? null
+                      : (value) => setState(() => _type = value!),
                 ),
               ],
             ),
@@ -467,12 +525,15 @@ class _FundEditorDialogState extends State<_FundEditorDialog> {
         ),
         actions: [
           TextButton(
-            onPressed: _isSaving ? null : () => Navigator.of(context).pop(false),
+            onPressed:
+                _isSaving ? null : () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: _isSaving ? null : _save,
-            child: _isSaving ? const CircularProgressIndicator() : const Text('Save'),
+            child: _isSaving
+                ? const CircularProgressIndicator()
+                : const Text('Save'),
           ),
         ],
       );
