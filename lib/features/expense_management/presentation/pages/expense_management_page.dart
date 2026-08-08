@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/ui/app_notice.dart';
 import '../../../fund_management/data/models/fund.dart';
 import '../../application/expense_service.dart';
 import '../../data/models/expense.dart';
@@ -16,6 +17,11 @@ class ExpenseManagementPage extends StatefulWidget {
 class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
   List<Expense> _expenses = const [];
   List<Fund> _funds = const [];
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+  int? _selectedFundFilterId;
+  _ExpenseDateFilter _dateFilter = _ExpenseDateFilter.all;
+  bool _showFilters = false;
   bool _isLoading = true;
   Object? _loadError;
 
@@ -76,8 +82,7 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
       await _reload();
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(error.toString())));
+        AppNotice.error(error.toString());
       }
     }
   }
@@ -100,48 +105,410 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_loadError != null) {
-      return Center(child: Text('Failed to load expenses: $_loadError'));
-    }
-    if (_expenses.isEmpty) {
-      return const Center(child: Text('No expenses recorded yet.'));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Text(
+            'Failed to load expenses: $_loadError',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
     }
 
+    final now = DateTime.now().toLocal();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final weekStart = todayStart.subtract(Duration(days: now.weekday - 1));
+    final monthStart = DateTime(now.year, now.month, 1);
+
+    final filteredExpenses = _expenses.where((expense) {
+      final query = _searchQuery.trim().toLowerCase();
+      final matchesSearch = query.isEmpty ||
+          expense.personName.toLowerCase().contains(query) ||
+          expense.purpose.toLowerCase().contains(query) ||
+          (expense.notes?.toLowerCase().contains(query) ?? false) ||
+          _fundName(expense.fundId).toLowerCase().contains(query);
+
+      final matchesFund = _selectedFundFilterId == null ||
+          expense.fundId == _selectedFundFilterId;
+
+      final date = expense.expenseDate.toLocal();
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      final matchesDate = switch (_dateFilter) {
+        _ExpenseDateFilter.all => true,
+        _ExpenseDateFilter.today => !dateOnly.isBefore(todayStart),
+        _ExpenseDateFilter.thisWeek => !dateOnly.isBefore(weekStart),
+        _ExpenseDateFilter.thisMonth => !dateOnly.isBefore(monthStart),
+      };
+
+      return matchesSearch && matchesFund && matchesDate;
+    }).toList()
+      ..sort((a, b) => b.expenseDate.compareTo(a.expenseDate));
+
+    final filteredTotal =
+        filteredExpenses.fold<double>(0, (sum, item) => sum + item.amount);
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 92),
       children: [
-        ..._expenses.map((expense) => Card(
-              child: ListTile(
-                leading: const Icon(Icons.receipt_long),
-                title: Text(expense.purpose),
-                subtitle: Column(
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.16),
+                Theme.of(context)
+                    .colorScheme
+                    .secondaryContainer
+                    .withValues(alpha: 0.3),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.insights_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Spent by: ${expense.personName}'),
                     Text(
-                        'Amount: ${NumberFormat.currency(symbol: '₱').format(expense.amount)}'),
-                    Text('Fund: ${_fundName(expense.fundId)}'),
+                      'Expense analytics',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
                     Text(
-                        'Date: ${DateFormat('MMM dd, yyyy hh:mm a').format(expense.expenseDate)}'),
-                    if (expense.notes != null && expense.notes!.isNotEmpty)
-                      Text('Notes: ${expense.notes}'),
-                  ],
-                ),
-                trailing: Wrap(
-                  spacing: 4,
-                  children: [
-                    IconButton(
-                        icon: const Icon(Icons.edit),
-                        tooltip: 'Edit',
-                        onPressed: () => _showExpenseForm(expense)),
-                    IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        tooltip: 'Delete',
-                        onPressed: () => _deleteExpense(expense)),
+                      '${filteredExpenses.length} result${filteredExpenses.length == 1 ? '' : 's'} • ${NumberFormat.currency(symbol: 'P ').format(filteredTotal)}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
-            )),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(_showFilters ? 14 : 20),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Filters',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() => _showFilters = !_showFilters);
+                      },
+                      icon: Icon(
+                        _showFilters
+                            ? Icons.expand_less_rounded
+                            : Icons.expand_more_rounded,
+                      ),
+                      label: Text(_showFilters ? 'Collapse' : 'Expand'),
+                    ),
+                  ],
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 240),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  child: !_showFilters
+                      ? const SizedBox.shrink()
+                      : Column(
+                          key: const ValueKey('filter-open'),
+                          children: [
+                            TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                isDense: true,
+                                hintText:
+                                    'Search person, purpose, note, or fund',
+                                prefixIcon: const Icon(Icons.search),
+                                filled: true,
+                                fillColor: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 10,
+                                ),
+                                suffixIcon: _searchController.text.isEmpty
+                                    ? null
+                                    : IconButton(
+                                        icon: const Icon(Icons.clear),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() => _searchQuery = '');
+                                        },
+                                      ),
+                              ),
+                              onChanged: (value) => setState(() =>
+                                  _searchQuery = value.trim().toLowerCase()),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<int?>(
+                              initialValue: _selectedFundFilterId,
+                              decoration: const InputDecoration(
+                                labelText: 'Fund',
+                                isDense: true,
+                              ),
+                              items: [
+                                const DropdownMenuItem<int?>(
+                                  value: null,
+                                  child: Text('All funds'),
+                                ),
+                                ..._funds.map(
+                                  (fund) => DropdownMenuItem<int?>(
+                                    value: fund.id,
+                                    child: Text(fund.name),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _selectedFundFilterId = value),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                _dateChip('All time', _ExpenseDateFilter.all),
+                                _dateChip('Today', _ExpenseDateFilter.today),
+                                _dateChip(
+                                    'This week', _ExpenseDateFilter.thisWeek),
+                                _dateChip(
+                                  'This month',
+                                  _ExpenseDateFilter.thisMonth,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Spacer(),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _searchQuery = '';
+                                      _selectedFundFilterId = null;
+                                      _dateFilter = _ExpenseDateFilter.all;
+                                    });
+                                  },
+                                  icon: const Icon(Icons.clear_all),
+                                  label: const Text('Reset'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 260),
+          child: filteredExpenses.isEmpty
+              ? Card(
+                  key: const ValueKey('empty-state'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.filter_alt_off_rounded,
+                            size: 36,
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                          const SizedBox(height: 10),
+                          const Text('No expenses match current filters.'),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              : Column(
+                  key: const ValueKey('list-state'),
+                  children: filteredExpenses.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final expense = entry.value;
+                    return TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: 1),
+                      duration: Duration(milliseconds: 250 + (index * 35)),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, child) {
+                        return Opacity(
+                          opacity: value,
+                          child: Transform.translate(
+                            offset: Offset(0, (1 - value) * 14),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primaryContainer,
+                                        borderRadius: BorderRadius.circular(9),
+                                      ),
+                                      child: Icon(
+                                        Icons.receipt_long_rounded,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        expense.purpose,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                      ),
+                                    ),
+                                    Text(
+                                      NumberFormat.currency(symbol: 'P ')
+                                          .format(expense.amount),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text('Spent by: ${expense.personName}'),
+                                Text('Fund: ${_fundName(expense.fundId)}'),
+                                Text(
+                                  'Date: ${DateFormat('MMM dd, yyyy hh:mm a').format(expense.expenseDate)}',
+                                ),
+                                if (expense.notes != null &&
+                                    expense.notes!.isNotEmpty)
+                                  Text('Notes: ${expense.notes}'),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Spacer(),
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_rounded),
+                                      tooltip: 'Edit',
+                                      onPressed: () =>
+                                          _showExpenseForm(expense),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                          Icons.delete_outline_rounded),
+                                      tooltip: 'Delete',
+                                      onPressed: () => _deleteExpense(expense),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+        ),
       ],
+    );
+  }
+
+  Widget _dateChip(String label, _ExpenseDateFilter value) {
+    return ChoiceChip(
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      label: Text(label),
+      selected: _dateFilter == value,
+      onSelected: (_) {
+        setState(() => _dateFilter = value);
+      },
+      avatar: _dateFilter == value ? const Icon(Icons.check, size: 16) : null,
     );
   }
 
@@ -151,7 +518,15 @@ class _ExpenseManagementPageState extends State<ExpenseManagementPage> {
     }
     return 'Unknown';
   }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 }
+
+enum _ExpenseDateFilter { all, today, thisWeek, thisMonth }
 
 class _ExpenseEditorDialog extends StatefulWidget {
   const _ExpenseEditorDialog({this.expense, required this.funds});
@@ -246,8 +621,7 @@ class _ExpenseEditorDialogState extends State<_ExpenseEditorDialog> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error.toString())));
+      AppNotice.error(error.toString());
     }
   }
 
