@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/ui/app_notice.dart';
 import '../../application/grocery_stock_category_service.dart';
 import '../../application/grocery_stock_service.dart';
 import '../../data/models/grocery_stock_category.dart';
@@ -397,12 +398,10 @@ class _GroceryStockManagementPageState
       Navigator.pop(dialogContext);
       await _refreshItems();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Stock item saved successfully.')));
+      AppNotice.success('Stock item saved successfully.');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+      AppNotice.error(e.toString());
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -415,13 +414,11 @@ class _GroceryStockManagementPageState
       await GroceryStockService.instance.deleteStockItem(id);
       await _refreshItems();
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Stock item deleted.')));
+        AppNotice.success('Stock item deleted.');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+        AppNotice.error(e.toString());
       }
     }
   }
