@@ -113,6 +113,33 @@ void main() {
       expect(collected, 50);
     });
 
+    test('calculates grocery sales from received amount excluding change', () {
+      final sales = [
+        Sale(
+          receiptNumber: 'POS-1001',
+          totalPrice: 100,
+          amountPayable: 100,
+          amountPaid: 150,
+          changeAmount: 50,
+          soldAt: DateTime(2026, 1, 10),
+        ),
+        Sale(
+          receiptNumber: 'POS-1002',
+          totalPrice: 100,
+          amountPayable: 100,
+          amountPaid: 40,
+          changeAmount: 0,
+          soldAt: DateTime(2026, 1, 11),
+          outstandingBalance: 60,
+          isCreditSale: true,
+        ),
+      ];
+
+      final received = calculateReceivedSalesAmount(sales: sales);
+
+      expect(received, 140);
+    });
+
     test('excludes already paid customer debt from outstanding balance', () {
       final sales = [
         Sale(
