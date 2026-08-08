@@ -50,14 +50,18 @@ class SalesService {
     required double amountPaid,
     CustomerStatus customerStatus = CustomerStatus.standard,
   }) {
-    final totalPrice = cartItems.fold<double>(0, (sum, item) => sum + item.lineTotal);
+    final totalPrice =
+        cartItems.fold<double>(0, (sum, item) => sum + item.lineTotal);
     final acceptsCredit = customerStatus == CustomerStatus.allowedToBorrow;
 
     if (!acceptsCredit && amountPaid < totalPrice) {
-      throw ArgumentError('Amount paid cannot be less than the payable amount.');
+      throw ArgumentError(
+          'Amount paid cannot be less than the payable amount.');
     }
 
-    final outstandingBalance = acceptsCredit && amountPaid < totalPrice ? totalPrice - amountPaid : 0.0;
+    final outstandingBalance = acceptsCredit && amountPaid < totalPrice
+        ? totalPrice - amountPaid
+        : 0.0;
 
     return SalesTotals(
       totalPrice: totalPrice,
@@ -86,7 +90,9 @@ class SalesService {
     final targetDate = (at ?? DateTime.now()).toLocal();
     return sales.where((sale) {
       final soldAt = sale.soldAt.toLocal();
-      return soldAt.year == targetDate.year && soldAt.month == targetDate.month && soldAt.day == targetDate.day;
+      return soldAt.year == targetDate.year &&
+          soldAt.month == targetDate.month &&
+          soldAt.day == targetDate.day;
     }).fold<double>(0, (sum, sale) => sum + sale.amountPayable);
   }
 
@@ -96,7 +102,8 @@ class SalesService {
     required bool acceptsCredit,
   }) {
     if (!acceptsCredit && amountPaid < amountPayable) {
-      throw ArgumentError('Amount paid cannot be less than the payable amount.');
+      throw ArgumentError(
+          'Amount paid cannot be less than the payable amount.');
     }
     return amountPaid;
   }
@@ -127,7 +134,8 @@ class SalesService {
     final saleItemRepository = AppDatabase.instance.saleItemRepository!;
     final fundRepository = AppDatabase.instance.fundRepository!;
     final customerRepository = AppDatabase.instance.customerRepository!;
-    final balancePaymentRepository = CustomerBalancePaymentRepository(await AppDatabase.instance.database);
+    final balancePaymentRepository =
+        CustomerBalancePaymentRepository(await AppDatabase.instance.database);
 
     final sale = Sale(
       receiptNumber: receiptNumber,
@@ -153,7 +161,8 @@ class SalesService {
         throw ArgumentError('Not enough stock for ${item.itemName}.');
       }
       await stockRepository.update(
-        stockItem.copyWith(quantityInStock: stockItem.quantityInStock - item.quantity),
+        stockItem.copyWith(
+            quantityInStock: stockItem.quantityInStock - item.quantity),
       );
 
       await saleItemRepository.create(
@@ -176,14 +185,17 @@ class SalesService {
     if (customerId != null && totals.outstandingBalance > 0) {
       final existingCustomer = await customerRepository.getById(customerId);
       if (existingCustomer != null) {
-        final nextBalance = existingCustomer.currentBalance + totals.outstandingBalance;
-        await customerRepository.update(existingCustomer.copyWith(currentBalance: nextBalance));
+        final nextBalance =
+            existingCustomer.currentBalance + totals.outstandingBalance;
+        await customerRepository
+            .update(existingCustomer.copyWith(currentBalance: nextBalance));
         await balancePaymentRepository.create(
           CustomerBalancePayment(
             customerId: customerId,
             saleId: createdSale.id,
             amount: totals.outstandingBalance,
             paymentType: CustomerBalancePaymentType.credit,
+            source: CustomerBalancePaymentSource.grocery,
             note: 'Balance carried from sale ${createdSale.receiptNumber}',
             createdAt: DateTime.now(),
           ),
@@ -201,7 +213,8 @@ class SalesService {
     }
 
     if (groceryFund != null) {
-      await fundRepository.update(groceryFund.copyWith(currentBalance: groceryFund.currentBalance + netCashCollected));
+      await fundRepository.update(groceryFund.copyWith(
+          currentBalance: groceryFund.currentBalance + netCashCollected));
     }
 
     return createdSale;
