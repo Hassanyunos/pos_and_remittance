@@ -58,7 +58,8 @@ class FundService {
     final fund = await AppDatabase.instance.fundRepository!.getById(id);
     if (fund == null) throw StateError('Fund was not found.');
     if (_isProtected(fund)) {
-      throw StateError('GroceryCash and Remittance-eCash cannot be deleted.');
+      throw StateError(
+          'GroceryCash, Remittance-Cash, and LaundryCash cannot be deleted.');
     }
     await AppDatabase.instance.fundRepository!.delete(id);
   }
@@ -71,8 +72,10 @@ class FundService {
 
   Future<double> getTotalGroceryCapital() async {
     await AppDatabase.instance.database;
-    final groceryItems = await AppDatabase.instance.groceryStockRepository!.getAll();
-    return groceryItems.fold<double>(0, (sum, item) => sum + item.capitalPrice * item.quantityInStock);
+    final groceryItems =
+        await AppDatabase.instance.groceryStockRepository!.getAll();
+    return groceryItems.fold<double>(
+        0, (sum, item) => sum + item.capitalPrice * item.quantityInStock);
   }
 
   Future<double> getCurrentZakahAmount({
@@ -93,7 +96,9 @@ class FundService {
   Future<DateTime?> getLastZakahDate() async {
     await AppDatabase.instance.database;
     final expenses = await AppDatabase.instance.expenseRepository!.getAll();
-    for (final expense in expenses.where((item) => item.purpose.toLowerCase() == 'zakat').toList()) {
+    for (final expense in expenses
+        .where((item) => item.purpose.toLowerCase() == 'zakat')
+        .toList()) {
       return expense.expenseDate;
     }
     return null;
@@ -138,7 +143,8 @@ class FundService {
       return 'Zakat cannot be taken because your wealth is below the nisab threshold of ${_formatCurrency(nisab)}.';
     }
 
-    if (lastZakahDate != null && DateTime.now().difference(lastZakahDate).inDays < 354) {
+    if (lastZakahDate != null &&
+        DateTime.now().difference(lastZakahDate).inDays < 354) {
       return 'Zakat cannot be taken again yet because it is only due once every year.';
     }
 
@@ -193,9 +199,10 @@ class FundService {
 
   // The database seeds these two funds first, so their IDs are stable and they
   // remain protected even if an owner later changes their display names.
-  bool _isProtected(Fund fund) => fund.id == 1 || fund.id == 2;
+  bool _isProtected(Fund fund) => fund.id == 1 || fund.id == 2 || fund.id == 3;
 
-  String _formatCurrency(double amount) => NumberFormat.currency(symbol: '₱').format(amount);
+  String _formatCurrency(double amount) =>
+      NumberFormat.currency(symbol: '₱').format(amount);
 
   void _requireOwner() {
     if (!_isOwner) throw StateError('Only the owner can manage funds.');
