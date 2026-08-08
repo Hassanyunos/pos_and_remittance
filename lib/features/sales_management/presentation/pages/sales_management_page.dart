@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/database/app_database.dart';
+import '../../../../core/ui/app_notice.dart';
 import '../../../customer_management/data/models/customer.dart';
 import '../../../grocery_stock_management/data/models/grocery_stock_item.dart';
 import '../../application/sales_service.dart';
@@ -18,13 +19,15 @@ class SalesManagementPage extends StatefulWidget {
 }
 
 class _SaleCompletionDetails {
-  const _SaleCompletionDetails({required this.customer, required this.amountPaid});
+  const _SaleCompletionDetails(
+      {required this.customer, required this.amountPaid});
 
   final Customer? customer;
   final double amountPaid;
 }
 
-class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsBindingObserver {
+class _SalesManagementPageState extends State<SalesManagementPage>
+    with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   final List<SalesCartItem> _cart = [];
   List<GroceryStockItem> _stockItems = const [];
@@ -46,7 +49,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
       unawaited(_saveDraft());
     }
   }
@@ -55,13 +59,15 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
     final prefs = await SharedPreferences.getInstance();
     final draft = {
       'selectedCustomerId': _selectedCustomer?.id,
-      'cart': _cart.map((item) => {
-        'stockItemId': item.stockItemId,
-        'itemName': item.itemName,
-        'itemBarcode': item.itemBarcode,
-        'quantity': item.quantity,
-        'retailPrice': item.retailPrice,
-      }).toList(),
+      'cart': _cart
+          .map((item) => {
+                'stockItemId': item.stockItemId,
+                'itemName': item.itemName,
+                'itemBarcode': item.itemBarcode,
+                'quantity': item.quantity,
+                'retailPrice': item.retailPrice,
+              })
+          .toList(),
       'searchQuery': _searchQuery,
     };
     await prefs.setString(_draftKey, jsonEncode(draft));
@@ -75,7 +81,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
     try {
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
       final customerId = decoded['selectedCustomerId'] as int?;
-      final selectedCustomer = _customers.where((customer) => customer.id == customerId).firstOrNull;
+      final selectedCustomer =
+          _customers.where((customer) => customer.id == customerId).firstOrNull;
       final cartItems = (decoded['cart'] as List<dynamic>? ?? []).map((entry) {
         final item = entry as Map<String, dynamic>;
         return SalesCartItem(
@@ -101,7 +108,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
   Future<void> _loadData() async {
     try {
       await AppDatabase.instance.database;
-      final stockItems = await AppDatabase.instance.groceryStockRepository!.getAll();
+      final stockItems =
+          await AppDatabase.instance.groceryStockRepository!.getAll();
       final customers = await AppDatabase.instance.customerRepository!.getAll();
       if (!mounted) return;
       setState(() {
@@ -113,21 +121,22 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
     } catch (error) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      AppNotice.error(error.toString());
     }
   }
 
   void _addToCart(GroceryStockItem item) {
     final availableStock = item.quantityInStock;
     if (availableStock <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This item is out of stock.')));
+      AppNotice.warning('This item is out of stock.');
       return;
     }
 
-    final existing = _cart.where((entry) => entry.stockItemId == item.id).firstOrNull;
+    final existing =
+        _cart.where((entry) => entry.stockItemId == item.id).firstOrNull;
     final nextQuantity = (existing?.quantity ?? 0) + 1;
     if (nextQuantity > availableStock) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Not enough stock for this quantity.')));
+      AppNotice.warning('Not enough stock for this quantity.');
       return;
     }
 
@@ -153,11 +162,12 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
 
   Future<void> _completeSale() async {
     if (_cart.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add items to the cart first.')));
+      AppNotice.warning('Add items to the cart first.');
       return;
     }
 
-    final payableAmount = _cart.fold<double>(0, (sum, item) => sum + item.lineTotal);
+    final payableAmount =
+        _cart.fold<double>(0, (sum, item) => sum + item.lineTotal);
     final completion = await _showPaymentDialog(payableAmount);
     if (completion == null) {
       return;
@@ -174,7 +184,7 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
         customerStatus: completion.customer?.status ?? CustomerStatus.standard,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sale completed successfully.')));
+      AppNotice.success('Sale completed successfully.');
       setState(() {
         _cart.clear();
         _selectedCustomer = completion.customer;
@@ -183,12 +193,14 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
       await _saveDraft();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+      AppNotice.error(error.toString());
     }
   }
 
-  Future<_SaleCompletionDetails?> _showPaymentDialog(double payableAmount) async {
-    final amountController = TextEditingController(text: payableAmount.toStringAsFixed(2));
+  Future<_SaleCompletionDetails?> _showPaymentDialog(
+      double payableAmount) async {
+    final amountController =
+        TextEditingController(text: payableAmount.toStringAsFixed(2));
     Customer? selectedCustomer = _selectedCustomer;
     return showDialog<_SaleCompletionDetails>(
       context: context,
@@ -209,38 +221,50 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                   const SizedBox(height: 12),
                   DropdownButtonFormField<Customer?>(
                     initialValue: selectedCustomer,
-                    decoration: const InputDecoration(labelText: 'Customer (optional)'),
+                    decoration:
+                        const InputDecoration(labelText: 'Customer (optional)'),
                     items: [
-                      const DropdownMenuItem<Customer?>(value: null, child: Text('Walk-in customer')),
-                      ..._customers.map((customer) => DropdownMenuItem<Customer?>(value: customer, child: Text(customer.name))),
+                      const DropdownMenuItem<Customer?>(
+                          value: null, child: Text('Walk-in customer')),
+                      ..._customers.map((customer) =>
+                          DropdownMenuItem<Customer?>(
+                              value: customer, child: Text(customer.name))),
                     ],
-                    onChanged: (value) => setState(() => selectedCustomer = value),
+                    onChanged: (value) =>
+                        setState(() => selectedCustomer = value),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     autofocus: true,
-                    decoration: const InputDecoration(labelText: 'Cash received'),
+                    decoration:
+                        const InputDecoration(labelText: 'Cash received'),
                     onChanged: (_) => setState(() {}),
                   ),
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
+                TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Cancel')),
                 FilledButton(
                   onPressed: () {
                     final amountPaid = double.tryParse(amountController.text);
                     if (amountPaid == null) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Enter a valid amount.')));
+                      AppNotice.warning('Enter a valid amount.');
                       return;
                     }
-                    final allowsCredit = selectedCustomer?.status == CustomerStatus.allowedToBorrow;
+                    final allowsCredit = selectedCustomer?.status ==
+                        CustomerStatus.allowedToBorrow;
                     if (!allowsCredit && amountPaid < payableAmount) {
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(const SnackBar(content: Text('Amount paid cannot be less than the amount due.')));
+                      AppNotice.warning(
+                          'Amount paid cannot be less than the amount due.');
                       return;
                     }
-                    Navigator.of(dialogContext).pop(_SaleCompletionDetails(customer: selectedCustomer, amountPaid: amountPaid));
+                    Navigator.of(dialogContext).pop(_SaleCompletionDetails(
+                        customer: selectedCustomer, amountPaid: amountPaid));
                   },
                   child: const Text('Save'),
                 ),
@@ -254,7 +278,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
 
   @override
   Widget build(BuildContext context) {
-    final totalPrice = _cart.fold<double>(0, (sum, item) => sum + item.lineTotal);
+    final totalPrice =
+        _cart.fold<double>(0, (sum, item) => sum + item.lineTotal);
     final amountPayable = totalPrice;
     final changeAmount = _lastChangeAmount;
 
@@ -282,7 +307,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                         const SizedBox(height: 12),
                         SizedBox(
                           height: constraints.maxHeight * 0.38,
-                          child: _buildCartSummary(totalPrice, amountPayable, changeAmount),
+                          child: _buildCartSummary(
+                              totalPrice, amountPayable, changeAmount),
                         ),
                         const SizedBox(height: 12),
                         Expanded(child: _buildStockSelector(filteredStock)),
@@ -318,13 +344,16 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Today sales', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Today sales',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     FutureBuilder<double>(
                       future: _getTodaySalesTotal(),
                       builder: (context, snapshot) {
                         final value = snapshot.data ?? 0;
-                        return Text('₱${value.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold));
+                        return Text('₱${value.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold));
                       },
                     ),
                   ],
@@ -340,7 +369,9 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
     return SalesService.instance.calculateDailySalesTotal(sales: sales);
   }
 
-  Widget _buildCartSummary(double totalPrice, double amountPayable, double changeAmount) => Card(
+  Widget _buildCartSummary(
+          double totalPrice, double amountPayable, double changeAmount) =>
+      Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -349,7 +380,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Current cart', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('Current cart',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   Text(
                     _cart.isEmpty
                         ? 'No selected items'
@@ -381,10 +413,12 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                                     item.itemName,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600),
                                   ),
                                   const SizedBox(height: 4),
-                                  Text('${item.quantity} × ₱${item.retailPrice.toStringAsFixed(2)}'),
+                                  Text(
+                                      '${item.quantity} × ₱${item.retailPrice.toStringAsFixed(2)}'),
                                 ],
                               ),
                             ),
@@ -403,7 +437,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                                   ),
                                   IconButton(
                                     padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                    constraints: const BoxConstraints(
+                                        minWidth: 32, minHeight: 32),
                                     icon: const Icon(Icons.delete_outline),
                                     onPressed: () => _removeFromCart(item),
                                   ),
@@ -453,12 +488,21 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
           builder: (context, setState) {
             final visibleSales = filteredSales.where((sale) {
               final matchesText = _historySearchQuery.isEmpty ||
-                  sale.receiptNumber.toLowerCase().contains(_historySearchQuery.toLowerCase()) ||
-                  (sale.customerName?.toLowerCase().contains(_historySearchQuery.toLowerCase()) ?? false) ||
-                  sale.amountPaid.toStringAsFixed(2).contains(_historySearchQuery);
+                  sale.receiptNumber
+                      .toLowerCase()
+                      .contains(_historySearchQuery.toLowerCase()) ||
+                  (sale.customerName
+                          ?.toLowerCase()
+                          .contains(_historySearchQuery.toLowerCase()) ??
+                      false) ||
+                  sale.amountPaid
+                      .toStringAsFixed(2)
+                      .contains(_historySearchQuery);
               final saleDate = sale.soldAt.toLocal();
               final matchesDate = _historyFilterDate == null ||
-                  (saleDate.year == _historyFilterDate!.year && saleDate.month == _historyFilterDate!.month && saleDate.day == _historyFilterDate!.day);
+                  (saleDate.year == _historyFilterDate!.year &&
+                      saleDate.month == _historyFilterDate!.month &&
+                      saleDate.day == _historyFilterDate!.day);
               return matchesText && matchesDate;
             }).toList();
 
@@ -470,8 +514,11 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextField(
-                      decoration: const InputDecoration(labelText: 'Search receipt, customer, or amount', prefixIcon: Icon(Icons.search)),
-                      onChanged: (value) => setState(() => _historySearchQuery = value.trim()),
+                      decoration: const InputDecoration(
+                          labelText: 'Search receipt, customer, or amount',
+                          prefixIcon: Icon(Icons.search)),
+                      onChanged: (value) =>
+                          setState(() => _historySearchQuery = value.trim()),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -481,7 +528,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                             onPressed: () async {
                               final picked = await showDatePicker(
                                 context: context,
-                                initialDate: _historyFilterDate ?? DateTime.now(),
+                                initialDate:
+                                    _historyFilterDate ?? DateTime.now(),
                                 firstDate: DateTime(2020),
                                 lastDate: DateTime(2100),
                               );
@@ -490,12 +538,15 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                               }
                             },
                             icon: const Icon(Icons.calendar_today_rounded),
-                            label: Text(_historyFilterDate == null ? 'Filter by date' : '${_historyFilterDate!.day}/${_historyFilterDate!.month}/${_historyFilterDate!.year}'),
+                            label: Text(_historyFilterDate == null
+                                ? 'Filter by date'
+                                : '${_historyFilterDate!.day}/${_historyFilterDate!.month}/${_historyFilterDate!.year}'),
                           ),
                         ),
                         if (_historyFilterDate != null)
                           TextButton(
-                            onPressed: () => setState(() => _historyFilterDate = null),
+                            onPressed: () =>
+                                setState(() => _historyFilterDate = null),
                             child: const Text('Clear'),
                           ),
                       ],
@@ -510,9 +561,11 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                           return ListTile(
                             title: Text(
                               '₱${sale.amountPaid.toStringAsFixed(2)}',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            subtitle: Text('${sale.customerName ?? 'Walk-in'} • ${sale.receiptNumber} • ${sale.soldAt.toLocal().toString().substring(0, 16)}'),
+                            subtitle: Text(
+                                '${sale.customerName ?? 'Walk-in'} • ${sale.receiptNumber} • ${sale.soldAt.toLocal().toString().substring(0, 16)}'),
                             trailing: TextButton(
                               onPressed: () => _showReceiptPreview(sale),
                               child: const Text('View receipt'),
@@ -525,7 +578,9 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Close')),
+                TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Close')),
               ],
             );
           },
@@ -535,7 +590,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
   }
 
   Future<void> _showReceiptPreview(Sale sale) async {
-    final items = await AppDatabase.instance.saleItemRepository!.getBySaleId(sale.id!);
+    final items =
+        await AppDatabase.instance.saleItemRepository!.getBySaleId(sale.id!);
     if (!mounted) return;
     await showDialog<void>(
       context: context,
@@ -547,7 +603,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
             children: [
               Text('Customer: ${sale.customerName ?? 'Walk-in'}'),
               const SizedBox(height: 8),
-              Text('Date: ${sale.soldAt.toLocal().toString().substring(0, 16)}'),
+              Text(
+                  'Date: ${sale.soldAt.toLocal().toString().substring(0, 16)}'),
               const SizedBox(height: 8),
               Text('Receipt number: ${sale.receiptNumber}'),
               const SizedBox(height: 8),
@@ -557,16 +614,20 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
               const SizedBox(height: 8),
               Text('Change: ₱${sale.changeAmount.toStringAsFixed(2)}'),
               const SizedBox(height: 8),
-              Text('Outstanding balance: ₱${sale.outstandingBalance.toStringAsFixed(2)}'),
+              Text(
+                  'Outstanding balance: ₱${sale.outstandingBalance.toStringAsFixed(2)}'),
               const SizedBox(height: 12),
-              const Text('Items bought', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Items bought',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               ...items.map((item) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(child: Text('${item.itemName} x${item.quantityBought}')),
+                        Expanded(
+                            child: Text(
+                                '${item.itemName} x${item.quantityBought}')),
                         Text('₱${item.retailPrice.toStringAsFixed(2)}'),
                       ],
                     ),
@@ -575,8 +636,12 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Close')),
-          FilledButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Print')),
+          TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close')),
+          FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Print')),
         ],
       ),
     );
@@ -590,7 +655,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
             children: [
               TextField(
                 controller: _searchController,
-                decoration: const InputDecoration(labelText: 'Search stock', prefixIcon: Icon(Icons.search)),
+                decoration: const InputDecoration(
+                    labelText: 'Search stock', prefixIcon: Icon(Icons.search)),
                 onChanged: (value) async {
                   setState(() => _searchQuery = value.trim().toLowerCase());
                   await _saveDraft();
@@ -619,7 +685,8 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                                     item.itemName,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w600),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
@@ -632,7 +699,9 @@ class _SalesManagementPageState extends State<SalesManagementPage> with WidgetsB
                             ),
                             const SizedBox(width: 8),
                             FilledButton(
-                              onPressed: item.quantityInStock > 0 ? () => _addToCart(item) : null,
+                              onPressed: item.quantityInStock > 0
+                                  ? () => _addToCart(item)
+                                  : null,
                               child: const Text('Add'),
                             ),
                           ],
