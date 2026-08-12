@@ -333,28 +333,60 @@ class _SalesManagementPageState extends State<SalesManagementPage>
         ],
       );
 
-  Widget _buildDailySalesSummary() => Card(
+  Widget _buildDailySalesSummary() => FutureBuilder<_TodaySalesSnapshot>(
+        future: _getTodaySalesSnapshot(),
+        builder: (context, snapshot) {
+          final summary = snapshot.data ?? const _TodaySalesSnapshot();
+          return Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _todaySummaryCard(
+                title: 'Today paid sales',
+                value: summary.paidAmount,
+                icon: Icons.payments_rounded,
+                color: Colors.teal,
+              ),
+              _todaySummaryCard(
+                title: 'Today unpaid balance',
+                value: summary.unpaidAmount,
+                icon: Icons.request_quote_rounded,
+                color: const Color(0xFFB91C1C),
+              ),
+            ],
+          );
+        },
+      );
+
+  Widget _todaySummaryCard({
+    required String title,
+    required double value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Card(
+      child: SizedBox(
+        width: 220,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              const Icon(Icons.today_rounded, color: Colors.teal),
-              const SizedBox(width: 12),
+              Icon(icon, color: color),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Today sales',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
-                    FutureBuilder<double>(
-                      future: _getTodaySalesTotal(),
-                      builder: (context, snapshot) {
-                        final value = snapshot.data ?? 0;
-                        return Text('₱${value.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold));
-                      },
+                    Text(
+                      '₱${value.toStringAsFixed(2)}',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: color),
                     ),
                   ],
                 ),
@@ -362,11 +394,27 @@ class _SalesManagementPageState extends State<SalesManagementPage>
             ],
           ),
         ),
-      );
+      ),
+    );
+  }
 
-  Future<double> _getTodaySalesTotal() async {
+  Future<_TodaySalesSnapshot> _getTodaySalesSnapshot() async {
     final sales = await SalesService.instance.getSales();
-    return SalesService.instance.calculateDailySalesTotal(sales: sales);
+    final now = DateTime.now().toLocal();
+    final todaySales = sales.where((sale) {
+      final soldAt = sale.soldAt.toLocal();
+      return soldAt.year == now.year &&
+          soldAt.month == now.month &&
+          soldAt.day == now.day;
+    });
+    final paidAmount =
+        todaySales.fold<double>(0, (sum, sale) => sum + (sale.amountPaid - sale.changeAmount));
+    final unpaidAmount =
+        todaySales.fold<double>(0, (sum, sale) => sum + sale.outstandingBalance);
+    return _TodaySalesSnapshot(
+      paidAmount: paidAmount,
+      unpaidAmount: unpaidAmount,
+    );
   }
 
   Widget _buildCartSummary(
@@ -726,4 +774,11 @@ class _SalesManagementPageState extends State<SalesManagementPage>
 
 extension<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
+}
+
+class _TodaySalesSnapshot {
+  const _TodaySalesSnapshot({this.paidAmount = 0, this.unpaidAmount = 0});
+
+  final double paidAmount;
+  final double unpaidAmount;
 }
