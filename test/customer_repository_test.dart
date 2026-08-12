@@ -28,7 +28,10 @@ void main() {
             name TEXT NOT NULL,
             address TEXT,
             contact_number TEXT,
-            id_picture_path TEXT
+            id_picture_path TEXT,
+            status TEXT NOT NULL DEFAULT 'standard',
+            current_balance REAL NOT NULL DEFAULT 0,
+            archived_at TEXT
           )
         ''');
       },
