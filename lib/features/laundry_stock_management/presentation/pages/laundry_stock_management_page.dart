@@ -32,6 +32,7 @@ class _LaundryStockManagementPageState
 
   final _serviceNameController = TextEditingController();
   final _servicePriceController = TextEditingController();
+  final _serviceMaxWeightController = TextEditingController(text: '1');
   final _serviceNotesController = TextEditingController();
   final _serviceAddOnLookupController = TextEditingController();
 
@@ -62,6 +63,7 @@ class _LaundryStockManagementPageState
     _notesController.dispose();
     _serviceNameController.dispose();
     _servicePriceController.dispose();
+    _serviceMaxWeightController.dispose();
     _serviceNotesController.dispose();
     _serviceAddOnLookupController.dispose();
     _searchController.dispose();
@@ -242,6 +244,7 @@ class _LaundryStockManagementPageState
     if (service == null) {
       _serviceNameController.clear();
       _servicePriceController.clear();
+      _serviceMaxWeightController.text = '1';
       _serviceNotesController.clear();
       _serviceAddOnLookupController.clear();
       _serviceAddOnLookupQuery = '';
@@ -249,6 +252,8 @@ class _LaundryStockManagementPageState
     } else {
       _serviceNameController.text = service.name;
       _servicePriceController.text = service.price.toStringAsFixed(2);
+      _serviceMaxWeightController.text =
+          service.maxWeightKg.toStringAsFixed(2);
       _serviceNotesController.text = service.notes ?? '';
       _serviceAddOnLookupController.clear();
       _serviceAddOnLookupQuery = '';
@@ -319,6 +324,24 @@ class _LaundryStockManagementPageState
                                       value == null || value.trim().isEmpty
                                           ? 'Enter service price.'
                                           : null,
+                                ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _serviceMaxWeightController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Maximum weight (kg)',
+                                    helperText:
+                                        'Orders above this are auto-scaled by multiplier.',
+                                  ),
+                                  validator: (value) {
+                                    final parsed =
+                                        double.tryParse((value ?? '').trim());
+                                    if (parsed == null || parsed <= 0) {
+                                      return 'Enter a valid maximum weight.';
+                                    }
+                                    return null;
+                                  },
                                 ),
                                 const SizedBox(height: 12),
                                 TextField(
@@ -481,6 +504,8 @@ class _LaundryStockManagementPageState
 
     try {
       final price = double.tryParse(_servicePriceController.text.trim()) ?? 0;
+      final maxWeightKg =
+          double.tryParse(_serviceMaxWeightController.text.trim()) ?? 0;
       final addOnIds = <int>[];
       final sortedEntries = _selectedServiceAddOnQuantities.entries.toList()
         ..sort((a, b) => a.key.compareTo(b.key));
@@ -494,6 +519,7 @@ class _LaundryStockManagementPageState
         await LaundryServiceItemService.instance.addService(
           name: _serviceNameController.text,
           price: price,
+          maxWeightKg: maxWeightKg,
           addOnItemIds: addOnIds,
           notes: _serviceNotesController.text,
         );
@@ -502,6 +528,7 @@ class _LaundryStockManagementPageState
           id: _editingService!.id!,
           name: _serviceNameController.text,
           price: price,
+          maxWeightKg: maxWeightKg,
           addOnItemIds: addOnIds,
           notes: _serviceNotesController.text,
         );
@@ -527,7 +554,7 @@ class _LaundryStockManagementPageState
       await LaundryStockService.instance.deleteStockItem(id);
       await _refreshCatalog();
       if (!mounted) return;
-      AppNotice.success('Laundry stock deleted.');
+      AppNotice.success('Laundry stock archived. Restore anytime from Archives.');
     } catch (error) {
       if (!mounted) return;
       AppNotice.error(error.toString());
@@ -539,7 +566,7 @@ class _LaundryStockManagementPageState
       await LaundryServiceItemService.instance.deleteService(id);
       await _refreshCatalog();
       if (!mounted) return;
-      AppNotice.success('Laundry service deleted.');
+      AppNotice.success('Laundry service archived. Restore anytime from Archives.');
     } catch (error) {
       if (!mounted) return;
       AppNotice.error(error.toString());
@@ -760,6 +787,9 @@ class _LaundryStockManagementPageState
                           children: [
                             Text(
                                 'Price: P ${service.price.toStringAsFixed(2)}'),
+                            Text(
+                              'Max weight: ${service.maxWeightKg.toStringAsFixed(2)} kg',
+                            ),
                             Text(
                               addOnNames.isEmpty
                                   ? 'Add-ons (free): None'
