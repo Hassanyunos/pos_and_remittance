@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -62,6 +63,7 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
   String? _selectedServiceName;
   LaundryOrderStatus _selectedStatus = LaundryOrderStatus.pending;
   Map<int, int> _selectedServiceAddOnQuantities = <int, int>{};
+  Map<int, int> _baseServiceAddOnQuantities = <int, int>{};
   Map<int, int> _selectedPaidAddOnQuantities = <int, int>{};
   String? _itemImagePath;
   File? _itemImageFile;
@@ -241,12 +243,35 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
     setDialogState(() {
       _selectedServiceId = service?.id;
       _selectedServiceName = service?.name;
-      _selectedServiceAddOnQuantities = service == null
+      _baseServiceAddOnQuantities = service == null
           ? <int, int>{}
           : _defaultServiceAddOnQuantities(service);
-      _laundryAmountController.text = (service?.price ?? 0).toStringAsFixed(2);
-      _recomputeTotals();
+      _applyServiceScalingByWeight();
     });
+  }
+
+  void _applyServiceScalingByWeight() {
+    final service = _findServiceById(_selectedServiceId);
+    if (service == null) {
+      _selectedServiceAddOnQuantities = <int, int>{};
+      _laundryAmountController.text = '0.00';
+      _recomputeTotals();
+      return;
+    }
+
+    final weightKg = double.tryParse(_weightController.text.trim()) ?? 0;
+    final maxWeightKg = service.maxWeightKg > 0 ? service.maxWeightKg : 1;
+    final units = weightKg > 0 ? (weightKg / maxWeightKg).ceil() : 1;
+    final multiplier = math.max(1, units);
+
+    final scaledAddOns = <int, int>{};
+    for (final entry in _baseServiceAddOnQuantities.entries) {
+      scaledAddOns[entry.key] = entry.value * multiplier;
+    }
+    _selectedServiceAddOnQuantities = scaledAddOns;
+    _laundryAmountController.text =
+        (service.price * multiplier).toStringAsFixed(2);
+    _recomputeTotals();
   }
 
   void _recomputeTotals() {
@@ -319,6 +344,7 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
       _selectedServiceName = null;
       _selectedStatus = LaundryOrderStatus.pending;
       _selectedServiceAddOnQuantities = <int, int>{};
+      _baseServiceAddOnQuantities = <int, int>{};
       _selectedPaidAddOnQuantities = <int, int>{};
       _customerLookupQuery = '';
       _paidAddOnLookupQuery = '';
@@ -355,6 +381,7 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
       freeQuantities[itemId] = (freeQuantities[itemId] ?? 0) + 1;
     }
     _selectedServiceAddOnQuantities = freeQuantities;
+    _baseServiceAddOnQuantities = freeQuantities;
 
     final loadedPaidIds = (order.paidAddOnItemIds ?? order.addOnItemIds ?? '')
         .split(',')
@@ -388,7 +415,8 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
     final selectedService = _findServiceById(_selectedServiceId);
     if (selectedService != null) {
       _selectedServiceName = selectedService.name;
-      _laundryAmountController.text = selectedService.price.toStringAsFixed(2);
+      _baseServiceAddOnQuantities = _defaultServiceAddOnQuantities(selectedService);
+      _applyServiceScalingByWeight();
     } else {
       _laundryAmountController.text =
           order.laundryBaseAmount.toStringAsFixed(2);
@@ -398,7 +426,9 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
     _changeController.text = order.changeAmount.toStringAsFixed(2);
     _notesController.text = order.notes ?? '';
 
-    _recomputeTotals();
+    if (selectedService == null) {
+      _recomputeTotals();
+    }
   }
 
   Future<void> _showOrderDialog({LaundryOrder? order}) async {
@@ -655,6 +685,11 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
                                         decoration: const InputDecoration(
                                           labelText: 'Weight (kg)',
                                         ),
+                                        onChanged: (_) {
+                                          setDialogState(() {
+                                            _applyServiceScalingByWeight();
+                                          });
+                                        },
                                         validator: (value) => value == null ||
                                                 value.trim().isEmpty
                                             ? 'Enter weight.'
@@ -705,6 +740,13 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
                                       );
                                     },
                                   ),
+                                if (_selectedServiceId != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Service price and free add-ons auto-scale by weight.',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                ],
                                 const SizedBox(height: 12),
                                 Text(
                                   'Additional add-ons (with charge)',
@@ -1279,7 +1321,7 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
       await LaundryService.instance.deleteOrder(id);
       await _reload();
       if (!mounted) return;
-      AppNotice.success('Laundry order deleted.');
+      AppNotice.success('Laundry order archived. Restore anytime from Archives.');
     } catch (error) {
       if (!mounted) return;
       AppNotice.error(error.toString());
@@ -1368,9 +1410,9 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Delete laundry order?'),
+          title: const Text('Archive laundry order?'),
           content: Text(
-            'This will permanently delete ${order.referenceNumber} for ${order.customerName}.',
+            'Archive ${order.referenceNumber} for ${order.customerName}? You can restore it from Archives.',
           ),
           actions: [
             TextButton(
@@ -1379,7 +1421,7 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Delete'),
+              child: const Text('Archive'),
             ),
           ],
         );
@@ -1421,15 +1463,21 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
     setState(() => _dateFilter = selected);
   }
 
-  Future<double> _getTodayLaundrySalesTotal() async {
+  Future<_LaundrySalesSnapshot> _getLaundrySalesSnapshot() async {
     final orders = await LaundryService.instance.getOrders();
     final now = DateTime.now().toLocal();
     final start = DateTime(now.year, now.month, now.day);
     final end = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
-    return orders.where((order) {
+    final todayPaid = orders.where((order) {
       final createdAt = order.createdAt.toLocal();
       return !createdAt.isBefore(start) && !createdAt.isAfter(end);
     }).fold<double>(0, (sum, order) => sum + order.netReceived);
+
+    final totalUnpaid = orders.fold<double>(0, (sum, order) {
+      final outstanding = order.amountPayable - order.amountPaid;
+      return sum + (outstanding > 0 ? outstanding : 0);
+    });
+    return _LaundrySalesSnapshot(todayPaid: todayPaid, totalUnpaid: totalUnpaid);
   }
 
   Widget _buildOrderCard(LaundryOrder order) {
@@ -1506,44 +1554,32 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
+            child: FutureBuilder<_LaundrySalesSnapshot>(
+              future: _getLaundrySalesSnapshot(),
+              builder: (context, snapshot) {
+                final summary = snapshot.data ?? const _LaundrySalesSnapshot();
+                return Row(
                   children: [
-                    const Icon(
-                      Icons.today_rounded,
-                      color: Color(0xFF0EA5A4),
-                    ),
-                    const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Today laundry sales',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          FutureBuilder<double>(
-                            future: _getTodayLaundrySalesTotal(),
-                            builder: (context, snapshot) {
-                              final value = snapshot.data ?? 0;
-                              return Text(
-                                'P ${value.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              );
-                            },
-                          ),
-                        ],
+                      child: _salesSummaryCard(
+                        title: 'Today paid sales',
+                        value: summary.todayPaid,
+                        icon: Icons.today_rounded,
+                        color: const Color(0xFF0EA5A4),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _salesSummaryCard(
+                        title: 'Unpaid balance',
+                        value: summary.totalUnpaid,
+                        icon: Icons.request_quote_rounded,
+                        color: const Color(0xFFB91C1C),
                       ),
                     ),
                   ],
-                ),
-              ),
+                );
+              },
             ),
           ),
           Padding(
@@ -1585,9 +1621,10 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
                     ),
                     const SizedBox(width: 8),
                     SizedBox(
-                      width: 170,
+                      width: 190,
                       child: DropdownButtonFormField<LaundryOrderStatus?>(
                         initialValue: _statusFilter,
+                        isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Status',
                           isDense: true,
@@ -1611,9 +1648,10 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
                     ),
                     const SizedBox(width: 8),
                     SizedBox(
-                      width: 160,
+                      width: 185,
                       child: DropdownButtonFormField<_LaundryBalanceFilter>(
                         initialValue: _balanceFilter,
+                        isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Balance',
                           isDense: true,
@@ -1716,4 +1754,55 @@ class _LaundryManagementPageState extends State<LaundryManagementPage> {
       ),
     );
   }
+
+  Widget _salesSummaryCard({
+    required String title,
+    required double value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'P ${value.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LaundrySalesSnapshot {
+  const _LaundrySalesSnapshot({this.todayPaid = 0, this.totalUnpaid = 0});
+
+  final double todayPaid;
+  final double totalUnpaid;
 }
