@@ -9,12 +9,16 @@ class LaundryServiceItemService {
   void validateServiceInput({
     required String name,
     required double price,
+    required double maxWeightKg,
   }) {
     if (name.trim().isEmpty) {
       throw ArgumentError('Service name is required.');
     }
     if (price < 0) {
       throw ArgumentError('Service price cannot be negative.');
+    }
+    if (maxWeightKg <= 0) {
+      throw ArgumentError('Maximum weight must be greater than zero.');
     }
   }
 
@@ -26,16 +30,18 @@ class LaundryServiceItemService {
   Future<LaundryServiceItem> addService({
     required String name,
     required double price,
+    required double maxWeightKg,
     required List<int> addOnItemIds,
     String? notes,
   }) async {
-    validateServiceInput(name: name, price: price);
+    validateServiceInput(name: name, price: price, maxWeightKg: maxWeightKg);
 
     await AppDatabase.instance.database;
     return AppDatabase.instance.laundryServiceRepository!.create(
       LaundryServiceItem(
         name: name.trim(),
         price: price,
+        maxWeightKg: maxWeightKg,
         addOnItemIds: addOnItemIds.isEmpty ? null : addOnItemIds.join(','),
         notes: notes?.trim().isEmpty == true ? null : notes?.trim(),
       ),
@@ -46,10 +52,11 @@ class LaundryServiceItemService {
     required int id,
     required String name,
     required double price,
+    required double maxWeightKg,
     required List<int> addOnItemIds,
     String? notes,
   }) async {
-    validateServiceInput(name: name, price: price);
+    validateServiceInput(name: name, price: price, maxWeightKg: maxWeightKg);
 
     await AppDatabase.instance.database;
     final repository = AppDatabase.instance.laundryServiceRepository!;
@@ -60,6 +67,7 @@ class LaundryServiceItemService {
       existing.copyWith(
         name: name.trim(),
         price: price,
+        maxWeightKg: maxWeightKg,
         addOnItemIds: addOnItemIds.isEmpty ? null : addOnItemIds.join(','),
         notes: notes?.trim().isEmpty == true ? null : notes?.trim(),
       ),
