@@ -61,9 +61,9 @@ class _FundManagementPageState extends State<FundManagementPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete fund?'),
+        title: const Text('Archive fund?'),
         content: Text(
-          'Are you sure you want to delete ${fund.name}? This action cannot be undone.',
+          'Archive ${fund.name}? You can restore it later from Archives.',
         ),
         actions: [
           TextButton(
@@ -71,7 +71,7 @@ class _FundManagementPageState extends State<FundManagementPage> {
               child: const Text('No')),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Yes, delete'),
+            child: const Text('Yes, archive'),
           ),
         ],
       ),
