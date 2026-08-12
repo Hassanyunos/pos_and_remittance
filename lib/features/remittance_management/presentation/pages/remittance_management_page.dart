@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../../../core/ui/app_notice.dart';
+import '../../../auth/application/auth_service.dart';
 import '../../../customer_management/application/customer_service.dart';
 import '../../../customer_management/data/models/customer.dart';
 import '../../../fund_management/data/models/fund.dart';
@@ -632,7 +633,7 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
       context: dialogContext,
       builder: (context) => AlertDialog(
         title: const Text('Delete remittance'),
-        content: Text('Delete reference ${remittance.referenceNumber}?'),
+        content: Text('Archive reference ${remittance.referenceNumber}? You can restore from Archives.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -649,7 +650,7 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
       await RemittanceService.instance.deleteRemittance(remittance.id!);
       await _loadData();
       if (mounted) {
-        AppNotice.success('Remittance deleted.');
+        AppNotice.success('Remittance archived. Restore anytime from Archives.');
       }
     } catch (error) {
       if (mounted) {
@@ -660,6 +661,13 @@ class _RemittanceManagementPageState extends State<RemittanceManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!(AuthService.instance.currentUser?.isOwner ?? false)) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Only the owner can access remittance management.'),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Remittance management')),
       floatingActionButton: FloatingActionButton.extended(
