@@ -140,7 +140,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete customer'),
-        content: Text('Delete ${customer.name}?'),
+        content: Text('Archive ${customer.name}? You can restore from Archives.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -157,7 +157,7 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
     await repository.delete(customer.id!);
     await _refreshCustomers();
     if (mounted) {
-      AppNotice.success('Customer deleted.');
+      AppNotice.success('Customer archived. Restore anytime from Archives.');
     }
   }
 
