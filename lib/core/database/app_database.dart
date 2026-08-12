@@ -23,7 +23,7 @@ class AppDatabase {
   AppDatabase._();
   static final AppDatabase instance = AppDatabase._();
   static const _databaseName = 'pos_remittance.db';
-  static const _databaseVersion = 18;
+  static const _databaseVersion = 20;
   Database? _database;
   UserRepository? userRepository;
   FundRepository? fundRepository;
@@ -98,6 +98,17 @@ class AppDatabase {
         database, 'customer_balance_payments', 'laundry_order_id', 'INTEGER');
     await _ensureColumn(database, 'customer_balance_payments', 'source',
         "TEXT NOT NULL DEFAULT 'grocery'");
+    await _ensureColumn(database, 'customers', 'archived_at', 'TEXT');
+    await _ensureColumn(database, 'funds', 'archived_at', 'TEXT');
+    await _ensureColumn(database, 'expenses', 'archived_at', 'TEXT');
+    await _ensureColumn(database, 'remittances', 'archived_at', 'TEXT');
+    await _ensureColumn(database, 'grocery_stock_items', 'archived_at', 'TEXT');
+    await _ensureColumn(database, 'laundry_stock_items', 'archived_at', 'TEXT');
+    await _ensureColumn(database, 'laundry_service_items', 'archived_at', 'TEXT');
+    await _ensureColumn(database, 'laundry_orders', 'archived_at', 'TEXT');
+    await _ensureColumn(database, 'sales', 'archived_at', 'TEXT');
+    await _ensureColumn(database, 'laundry_service_items', 'max_weight_kg',
+      'REAL NOT NULL DEFAULT 1');
     await database.execute('''
       CREATE TABLE IF NOT EXISTS laundry_orders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -163,11 +174,21 @@ class AppDatabase {
     final tableInfo = await database.rawQuery('PRAGMA table_info($tableName)');
     final columnExists = tableInfo.any((row) => row['name'] == columnName);
     if (!columnExists) {
-      await database.execute(
-          'ALTER TABLE $tableName ADD COLUMN $columnName $columnDefinition');
+      try {
+        await database.execute(
+            'ALTER TABLE $tableName ADD COLUMN $columnName $columnDefinition');
+      } catch (error) {
+        // Guard against duplicate migration attempts from concurrent startup.
+        if (error is DatabaseException) {
+          final message = error.toString().toLowerCase();
+          if (message.contains('duplicate column name')) {
+            return;
+          }
+        }
+        rethrow;
+      }
     }
   }
-
   void _initializeRepositories(Database database) {
     userRepository = UserRepository(database);
     fundRepository = FundRepository(database);
@@ -226,7 +247,8 @@ class AppDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         current_balance REAL NOT NULL DEFAULT 0,
-        fund_type TEXT NOT NULL
+        fund_type TEXT NOT NULL,
+        archived_at TEXT
       )
     ''');
     await database.execute('''
@@ -237,7 +259,8 @@ class AppDatabase {
         contact_number TEXT,
         id_picture_path TEXT,
         status TEXT NOT NULL DEFAULT 'standard',
-        current_balance REAL NOT NULL DEFAULT 0
+        current_balance REAL NOT NULL DEFAULT 0,
+        archived_at TEXT
       )
     ''');
     await database.execute('''
@@ -271,7 +294,8 @@ class AppDatabase {
         processed_by TEXT,
         edited_by TEXT,
         remittance_status TEXT NOT NULL,
-        notes TEXT
+        notes TEXT,
+        archived_at TEXT
       )
     ''');
     await database.execute('''
@@ -283,7 +307,8 @@ class AppDatabase {
         person_name TEXT NOT NULL,
         purpose TEXT NOT NULL,
         details TEXT,
-        notes TEXT
+        notes TEXT,
+        archived_at TEXT
       )
     ''');
     await database.execute('''
@@ -304,7 +329,8 @@ class AppDatabase {
         picture_path TEXT,
         category TEXT NOT NULL DEFAULT 'General',
         expiration_date TEXT,
-        notes TEXT
+        notes TEXT,
+        archived_at TEXT
       )
     ''');
     await database.execute('''
@@ -317,7 +343,8 @@ class AppDatabase {
         amount_payable REAL NOT NULL DEFAULT 0,
         amount_paid REAL NOT NULL DEFAULT 0,
         change_amount REAL NOT NULL DEFAULT 0,
-        sold_at TEXT NOT NULL
+        sold_at TEXT NOT NULL,
+        archived_at TEXT
       )
     ''');
     await database.execute('''
@@ -349,7 +376,8 @@ class AppDatabase {
         minimum_alert_quantity INTEGER NOT NULL DEFAULT 0,
         picture_path TEXT,
         category TEXT NOT NULL DEFAULT 'General',
-        notes TEXT
+        notes TEXT,
+        archived_at TEXT
       )
     ''');
     await database.execute('''
@@ -378,7 +406,8 @@ class AppDatabase {
         pickup_proof_image_path TEXT,
         notes TEXT,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        archived_at TEXT
       )
     ''');
     await database.execute('''
@@ -386,8 +415,10 @@ class AppDatabase {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         price REAL NOT NULL DEFAULT 0,
+        max_weight_kg REAL NOT NULL DEFAULT 1,
         add_on_item_ids TEXT,
-        notes TEXT
+        notes TEXT,
+        archived_at TEXT
       )
     ''');
   }
@@ -628,6 +659,7 @@ class AppDatabase {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           price REAL NOT NULL DEFAULT 0,
+          max_weight_kg REAL NOT NULL DEFAULT 1,
           add_on_item_ids TEXT,
           notes TEXT
         )
@@ -649,6 +681,21 @@ class AppDatabase {
           database, 'customer_balance_payments', 'laundry_order_id', 'INTEGER');
       await _ensureColumn(database, 'customer_balance_payments', 'source',
           "TEXT NOT NULL DEFAULT 'grocery'");
+    }
+    if (oldVersion < 19) {
+      await _ensureColumn(database, 'customers', 'archived_at', 'TEXT');
+      await _ensureColumn(database, 'funds', 'archived_at', 'TEXT');
+      await _ensureColumn(database, 'expenses', 'archived_at', 'TEXT');
+      await _ensureColumn(database, 'remittances', 'archived_at', 'TEXT');
+      await _ensureColumn(database, 'grocery_stock_items', 'archived_at', 'TEXT');
+      await _ensureColumn(database, 'laundry_stock_items', 'archived_at', 'TEXT');
+      await _ensureColumn(database, 'laundry_service_items', 'archived_at', 'TEXT');
+      await _ensureColumn(database, 'laundry_orders', 'archived_at', 'TEXT');
+      await _ensureColumn(database, 'sales', 'archived_at', 'TEXT');
+    }
+    if (oldVersion < 20) {
+      await _ensureColumn(database, 'laundry_service_items', 'max_weight_kg',
+          'REAL NOT NULL DEFAULT 1');
     }
   }
 }
