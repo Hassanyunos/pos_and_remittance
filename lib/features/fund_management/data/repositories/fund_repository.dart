@@ -21,7 +21,7 @@ class FundRepository {
     final existing = await _database.query(
       _tableName,
       columns: ['id'],
-      where: 'name = ?',
+      where: 'name = ? AND archived_at IS NULL',
       whereArgs: [name],
       limit: 1,
     );
@@ -31,18 +31,31 @@ class FundRepository {
   }
 
   Future<List<Fund>> getAll() async {
-    final maps = await _database.query(_tableName, orderBy: 'id ASC');
+    final maps = await _database.query(
+      _tableName,
+      where: 'archived_at IS NULL',
+      orderBy: 'id ASC',
+    );
     return maps.map(Fund.fromMap).toList();
   }
 
   Future<Fund?> getById(int id) async {
     final maps = await _database.query(
       _tableName,
-      where: 'id = ?',
+      where: 'id = ? AND archived_at IS NULL',
       whereArgs: [id],
       limit: 1,
     );
     return maps.isEmpty ? null : Fund.fromMap(maps.first);
+  }
+
+  Future<List<Fund>> getArchived() async {
+    final maps = await _database.query(
+      _tableName,
+      where: 'archived_at IS NOT NULL',
+      orderBy: 'archived_at DESC, id ASC',
+    );
+    return maps.map(Fund.fromMap).toList();
   }
 
   Future<Fund> create(Fund fund) async {
@@ -60,6 +73,20 @@ class FundRepository {
   }
 
   Future<void> delete(int id) async {
-    await _database.delete(_tableName, where: 'id = ?', whereArgs: [id]);
+    await _database.update(
+      _tableName,
+      {'archived_at': DateTime.now().toIso8601String()},
+      where: 'id = ? AND archived_at IS NULL',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> restore(int id) async {
+    await _database.update(
+      _tableName,
+      {'archived_at': null},
+      where: 'id = ? AND archived_at IS NOT NULL',
+      whereArgs: [id],
+    );
   }
 }
