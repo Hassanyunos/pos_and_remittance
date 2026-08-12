@@ -84,6 +84,15 @@ class _DashboardPageState extends State<DashboardPage> {
           _within(payment.createdAt, currentRange);
     }).fold<double>(0, (sum, payment) => sum + payment.amount);
 
+    final totalUnpaidGroceryBalance = _calculateOutstandingBySource(
+      payments: balancePayments,
+      source: CustomerBalancePaymentSource.grocery,
+    );
+    final totalUnpaidLaundryBalance = laundryOrders.fold<double>(0, (sum, order) {
+      final outstanding = order.amountPayable - order.amountPaid;
+      return sum + (outstanding > 0 ? outstanding : 0);
+    });
+
     return _DashboardSummary(
       periodLabel: _periodLabel(_selectedPeriod),
       rangeLabel: _rangeLabel(currentRange.start, currentRange.end),
@@ -93,8 +102,28 @@ class _DashboardPageState extends State<DashboardPage> {
       remittanceChargesCollected: remittanceChargesCollected,
       paidLaundryBalance: paidLaundryBalance,
       paidGroceryBalance: paidGroceryBalance,
+      totalUnpaidGroceryBalance: totalUnpaidGroceryBalance,
+      totalUnpaidLaundryBalance: totalUnpaidLaundryBalance,
       topExpenseEntities: topExpenseEntities,
     );
+  }
+
+  double _calculateOutstandingBySource({
+    required List<CustomerBalancePayment> payments,
+    required CustomerBalancePaymentSource source,
+  }) {
+    var credited = 0.0;
+    var paid = 0.0;
+    for (final payment in payments) {
+      if (payment.source != source) continue;
+      if (payment.paymentType == CustomerBalancePaymentType.credit) {
+        credited += payment.amount;
+      } else if (payment.paymentType == CustomerBalancePaymentType.payment) {
+        paid += payment.amount;
+      }
+    }
+    final outstanding = credited - paid;
+    return outstanding > 0 ? outstanding : 0;
   }
 
   double _computeGroceryProfit({
@@ -347,6 +376,18 @@ class _DashboardPageState extends State<DashboardPage> {
             color: const Color(0xFF2563EB),
             icon: Icons.account_balance_wallet_rounded,
           ),
+          _quickStatCard(
+            title: 'Total unpaid grocery balance',
+            value: summary.totalUnpaidGroceryBalance,
+            color: const Color(0xFFDC2626),
+            icon: Icons.request_quote_rounded,
+          ),
+          _quickStatCard(
+            title: 'Total unpaid laundry balance',
+            value: summary.totalUnpaidLaundryBalance,
+            color: const Color(0xFFB91C1C),
+            icon: Icons.local_laundry_service_outlined,
+          ),
         ];
 
         if (constraints.maxWidth < 780) {
@@ -537,6 +578,8 @@ class _DashboardSummary {
     required this.remittanceChargesCollected,
     required this.paidLaundryBalance,
     required this.paidGroceryBalance,
+    required this.totalUnpaidGroceryBalance,
+    required this.totalUnpaidLaundryBalance,
     required this.topExpenseEntities,
   });
 
@@ -548,6 +591,8 @@ class _DashboardSummary {
   final double remittanceChargesCollected;
   final double paidLaundryBalance;
   final double paidGroceryBalance;
+  final double totalUnpaidGroceryBalance;
+  final double totalUnpaidLaundryBalance;
   final List<_BarData> topExpenseEntities;
 }
 
