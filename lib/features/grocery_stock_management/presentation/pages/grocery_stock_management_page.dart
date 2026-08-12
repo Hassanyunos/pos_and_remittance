@@ -414,7 +414,7 @@ class _GroceryStockManagementPageState
       await GroceryStockService.instance.deleteStockItem(id);
       await _refreshItems();
       if (mounted) {
-        AppNotice.success('Stock item deleted.');
+        AppNotice.success('Stock item archived. Restore anytime from Archives.');
       }
     } catch (e) {
       if (mounted) {
