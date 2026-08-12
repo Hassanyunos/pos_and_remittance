@@ -49,7 +49,7 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       const Icon(Icons.storefront, size: 72),
                       const SizedBox(height: 16),
-                      Text('POS & Remittance',
+                      Text('POS',
                           style: Theme.of(context).textTheme.headlineMedium),
                       const SizedBox(height: 8),
                       const Text('Sign in to continue'),
