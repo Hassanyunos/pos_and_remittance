@@ -6,6 +6,7 @@ import '../../../fund_management/data/repositories/fund_repository.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../user_management/presentation/pages/create_user_page.dart';
 import '../../../auth/presentation/pages/change_password_page.dart';
+import '../../../archive/presentation/pages/archive_page.dart';
 import '../../../customer_management/presentation/pages/customer_management_page.dart';
 import '../../../expense_management/presentation/pages/expense_management_page.dart';
 import '../../../fund_management/presentation/pages/fund_management_page.dart';
@@ -114,28 +115,12 @@ class HomePage extends StatelessWidget {
             builder: (_) => const CustomerManagementPage())),
       ),
       _ModuleCardData(
-        title: 'Remittance',
-        subtitle: 'Track cash-in and cash-out records',
-        icon: Icons.swap_horiz_rounded,
-        color: const Color(0xFF10B981),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => const RemittanceManagementPage())),
-      ),
-      _ModuleCardData(
         title: 'Fund',
         subtitle: 'Visible to all, owner access only',
         icon: Icons.account_balance_wallet_rounded,
         color: const Color(0xFFEF4444),
         enabled: false,
         onTap: () => AppNotice.warning('Only owner can access Funds.'),
-      ),
-      _ModuleCardData(
-        title: 'Grocery sales',
-        subtitle: 'Process point-of-sale transactions',
-        icon: Icons.point_of_sale_rounded,
-        color: const Color(0xFF0F766E),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-            builder: (_) => const SalesManagementPage())),
       ),
       _ModuleCardData(
         title: 'Grocery Stock',
@@ -181,6 +166,10 @@ class HomePage extends StatelessWidget {
                   await Navigator.of(context).push(MaterialPageRoute<void>(
                       builder: (_) => const ManageUserPage()));
                   break;
+                case 'archives':
+                  await Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => const ArchivePage()));
+                  break;
                 case 'logout':
                   await AuthService.instance.signOut();
                   if (context.mounted) {
@@ -205,6 +194,12 @@ class HomePage extends StatelessWidget {
                         leading: Icon(Icons.person_add_alt_1_rounded),
                         title: Text('Manage users'),
                         contentPadding: EdgeInsets.zero)),
+                const PopupMenuItem(
+                  value: 'archives',
+                  child: ListTile(
+                    leading: Icon(Icons.archive_outlined),
+                    title: Text('Archives'),
+                    contentPadding: EdgeInsets.zero)),
               const PopupMenuItem(
                   value: 'logout',
                   child: ListTile(
@@ -225,66 +220,63 @@ class HomePage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (user.isOwner) ...[
-                      InkWell(
-                        borderRadius: BorderRadius.circular(20),
-                        onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                                builder: (_) => const DashboardPage())),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [Color(0xFF2563EB), Color(0xFF10B981)],
+                    InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                              builder: (_) => const DashboardPage())),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF2563EB), Color(0xFF10B981)],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(Icons.analytics_rounded,
+                                  color: Colors.white),
                             ),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.18),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: const Icon(Icons.analytics_rounded,
-                                    color: Colors.white),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Business Dashboard',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    user.isOwner
+                                        ? 'View sales, remittance, inventory, and expenses'
+                                        : 'View performance and operations summary',
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 12),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              const Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Business Dashboard',
-                                      style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      'View sales, remittance, inventory, and expenses',
-                                      style: TextStyle(
-                                          color: Colors.white, fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(Icons.arrow_forward_ios_rounded,
-                                  color: Colors.white, size: 18),
-                            ],
-                          ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios_rounded,
+                                color: Colors.white, size: 18),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                    ] else ...[
-                      _SalespersonMonitoringRow(),
-                      const SizedBox(height: 16),
-                    ],
+                    ),
+                    const SizedBox(height: 16),
                     Text('Operations',
                         style: Theme.of(context)
                             .textTheme
