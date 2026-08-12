@@ -11,6 +11,7 @@ class CustomerRepository {
   Future<List<Customer>> getAll() async {
     final maps = await _database.query(
       _tableName,
+      where: 'archived_at IS NULL',
       orderBy: 'name COLLATE NOCASE ASC',
     );
     return maps.map(Customer.fromMap).toList();
@@ -19,11 +20,20 @@ class CustomerRepository {
   Future<Customer?> getById(int id) async {
     final maps = await _database.query(
       _tableName,
-      where: 'id = ?',
+      where: 'id = ? AND archived_at IS NULL',
       whereArgs: [id],
       limit: 1,
     );
     return maps.isEmpty ? null : Customer.fromMap(maps.first);
+  }
+
+  Future<List<Customer>> getArchived() async {
+    final maps = await _database.query(
+      _tableName,
+      where: 'archived_at IS NOT NULL',
+      orderBy: 'archived_at DESC, name COLLATE NOCASE ASC',
+    );
+    return maps.map(Customer.fromMap).toList();
   }
 
   Future<Customer> create(Customer customer) async {
@@ -42,6 +52,20 @@ class CustomerRepository {
   }
 
   Future<void> delete(int id) async {
-    await _database.delete(_tableName, where: 'id = ?', whereArgs: [id]);
+    await _database.update(
+      _tableName,
+      {'archived_at': DateTime.now().toIso8601String()},
+      where: 'id = ? AND archived_at IS NULL',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> restore(int id) async {
+    await _database.update(
+      _tableName,
+      {'archived_at': null},
+      where: 'id = ? AND archived_at IS NOT NULL',
+      whereArgs: [id],
+    );
   }
 }
